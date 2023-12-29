@@ -1,0 +1,1209 @@
+//
+// EBNF to be viewd at https://www.bottlecaps.de/rr/ui
+//
+// Copy and paste this at https://www.bottlecaps.de/rr/ui in the 'Edit Grammar' tab
+// then click the 'View Diagram' tab.
+//
+
+//
+//To facilitate start navigating
+//
+
+cplusplus ::=
+	preprocessing-file? translation-unit
+
+//== c++14-cd-grammar.tex
+
+hex-quad ::=
+    hexadecimal-digit hexadecimal-digit hexadecimal-digit hexadecimal-digit
+
+universal-character-name ::=
+    "\u" hex-quad
+  | "\U" hex-quad hex-quad
+
+preprocessing-token ::=
+    header-name
+  | identifier
+  | pp-number
+  | character-literal
+  | user-defined-character-literal
+  | string-literal
+  | user-defined-string-literal
+  | preprocessing-op-or-punc
+  | "{each non-white-space character that cannot be one of the above}"
+
+//token ::=
+//    identifier
+//  | keyword
+//  | literal
+//  | operator
+//  | punctuator
+
+header-name ::=
+    "<" h-char-sequence ">"
+  | '"' q-char-sequence '"'
+
+h-char-sequence ::=
+    h-char
+  | h-char-sequence h-char
+
+h-char ::=
+    '{any member of the source character set except new-line and ">"}'
+
+q-char-sequence ::=
+    q-char
+  | q-char-sequence q-char
+
+q-char ::=
+    '{any member of the source character set except new-line and "}'
+
+pp-number ::=
+    digit
+  | "." digit
+  | pp-number digit
+  | pp-number identifier-nondigit
+  | pp-number "e" sign
+  | pp-number "E" sign
+  | pp-number "."
+
+identifier ::=
+    identifier-nondigit
+  | identifier identifier-nondigit
+  | identifier digit
+
+identifier-nondigit ::=
+    nondigit
+  | universal-character-name
+  | "{other implementation-defined characters}"
+
+nondigit ::=
+    "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m"
+  | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
+  | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M"
+  | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z" | "_"
+
+digit ::=
+    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+preprocessing-op-or-punc ::=
+  "{" | "}" | "[" | "]" | "#" | "##" | "(" | ")"
+  | "<:" | ":>" | "<%" | "%>" | "%:" | "%:%:" | ";" | ":" | "..."
+  | "new" | "delete" | "?" | "::" | "." | ".*"
+  | "+" | "-" | "*" | "/" | "%" | "^" | "&" | "|" | "~"
+  | "!" | "=" | "<" | ">" | "+=" | "-=" | "*=" | "/=" | "%="
+  | "^=" | "&=" | "|=" | "<<" | ">>" | ">>=" | "<<=" | "==" | "!="
+  | "<=" | ">=" | "&&" | "||" | "++" | "--" | "," | "->*" | "->"
+  | "and" | "and_eq" | "bitand" | "bitor" | "compl" | "not" | "not_eq"
+  | "or" | "or_eq" | "xor" | "xor_eq"
+
+literal ::=
+    integer-literal
+  | character-literal
+  | floating-literal
+  | string-literal
+  | boolean-literal
+  | pointer-literal
+  | user-defined-literal
+
+integer-literal ::=
+    decimal-literal integer-suffix?
+  | octal-literal integer-suffix?
+  | hexadecimal-literal integer-suffix?
+  | binary-literal integer-suffix?
+
+decimal-literal ::=
+    nonzero-digit
+  | decimal-literal digit
+
+octal-literal ::=
+    "0"
+  | octal-literal octal-digit
+
+hexadecimal-literal ::=
+    "0x" hexadecimal-digit
+  | "0X" hexadecimal-digit
+  | hexadecimal-literal hexadecimal-digit
+
+binary-literal ::=
+    "0b" binary-digit
+  | "0B" binary-digit
+  | binary-literal binary-digit
+
+nonzero-digit ::=
+    "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+
+octal-digit ::=
+    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7"
+
+hexadecimal-digit ::=
+    "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+  | "a" | "b" | "c" | "d" | "e" | "f"
+  | "A" | "B" | "C" | "D" | "E" | "F"
+
+binary-digit ::=
+    "0"
+  | "1"
+
+integer-suffix ::=
+    unsigned-suffix long-suffix?
+  | unsigned-suffix long-long-suffix?
+  | long-suffix unsigned-suffix?
+  | long-long-suffix unsigned-suffix?
+
+unsigned-suffix ::=
+    "u" | "U"
+
+long-suffix ::=
+    "l" | "L"
+
+long-long-suffix ::=
+    "ll" | "LL"
+
+character-literal ::=
+    "'" c-char-sequence "'"
+  | "u" "'" c-char-sequence "'"
+  | "U" "'" c-char-sequence "'"
+  | "L" "'" c-char-sequence "'"
+
+c-char-sequence ::=
+    c-char
+  | c-char-sequence c-char
+
+c-char ::=
+  "{any member of the source character set except}"
+  | '{the single-quote, backslash "\", or new-line character}'
+  | escape-sequence
+  | universal-character-name
+
+escape-sequence ::=
+    simple-escape-sequence
+  | octal-escape-sequence
+  | hexadecimal-escape-sequence
+
+simple-escape-sequence ::=
+    "\'" | '\"' | "\?" | "\\"
+  | "\a" | "\b" | "\f" | "\n" | "\r" | "\t" | "\v"
+
+octal-escape-sequence ::=
+    "\" octal-digit
+  | "\" octal-digit octal-digit
+  | "\" octal-digit octal-digit octal-digit
+
+hexadecimal-escape-sequence ::=
+    "\x" hexadecimal-digit
+  | hexadecimal-escape-sequence hexadecimal-digit
+
+floating-literal ::=
+    fractional-constant exponent-part? floating-suffix?
+  | digit-sequence exponent-part floating-suffix?
+
+fractional-constant ::=
+    digit-sequence? "." digit-sequence
+  | digit-sequence "."
+
+exponent-part ::=
+    "e" sign? digit-sequence
+  | "E" sign? digit-sequence
+
+sign ::=
+    "+" | "-"
+
+digit-sequence ::=
+    digit
+  | digit-sequence digit
+
+floating-suffix ::=
+    "f" | "l" | "F" | "L"
+
+string-literal ::=
+    encoding-prefix? '"' s-char-sequence? '"'
+  | encoding-prefix? "R" raw-string
+
+encoding-prefix ::=
+  "u8"
+  | "u"
+  | "U"
+  | "L"
+
+s-char-sequence ::=
+    s-char
+  | s-char-sequence s-char
+
+s-char ::=
+  "{any member of the source character set except}"
+  | '{the double-quote, backslash "\", or new-line character}'
+  | escape-sequence
+  | universal-character-name
+
+raw-string ::=
+    '"' d-char-sequence? "(" r-char-sequence? ")" d-char-sequence? '"'
+
+r-char-sequence ::=
+    r-char
+  | r-char-sequence r-char
+
+r-char ::=
+  "{any member of the source character set, except}"
+  | '{a right parenthesis ")" followed by the initial \nonterminal{d-char-sequence}}'
+  | '{(which may be empty) followed by a double quote.}'
+
+d-char-sequence ::=
+    d-char
+  | d-char-sequence d-char
+
+d-char ::=
+  "{any member of the basic source character set except:}"
+  | '{space, the left parenthesis "(", the right parenthesis ")", the backslash "\",}'
+  | "{and the control characters representing horizontal tab,}"
+  | "{vertical tab, form feed, and newline.}"
+
+boolean-literal ::=
+    "false"
+  | "true"
+
+pointer-literal ::=
+    "nullptr"
+
+user-defined-literal ::=
+    user-defined-integer-literal
+  | user-defined-floating-literal
+  | user-defined-string-literal
+  | user-defined-character-literal
+
+user-defined-integer-literal ::=
+    decimal-literal ud-suffix
+  | octal-literal ud-suffix
+  | hexadecimal-literal ud-suffix
+  | binary-literal ud-suffix
+
+user-defined-floating-literal ::=
+    fractional-constant exponent-part? ud-suffix
+  | digit-sequence exponent-part ud-suffix
+
+user-defined-string-literal ::=
+    string-literal ud-suffix
+
+user-defined-character-literal ::=
+    character-literal ud-suffix
+
+ud-suffix ::=
+    identifier
+
+translation-unit ::=
+    declaration-seq?
+
+primary-expression ::=
+    literal
+  | "this"
+  | "(" expression ")"
+  | id-expression
+  | lambda-expression
+
+id-expression ::=
+    unqualified-id
+  | qualified-id
+
+unqualified-id ::=
+    identifier
+  | operator-function-id
+  | conversion-function-id
+  | literal-operator-id
+  | "~" class-name
+  | "~" decltype-specifier
+  | template-id
+
+qualified-id ::=
+    nested-name-specifier "template"? unqualified-id
+
+nested-name-specifier ::=
+    "::"
+  | type-name "::"
+  | namespace-name "::"
+  | decltype-specifier "::"
+  | nested-name-specifier identifier "::"
+  | nested-name-specifier "template"? simple-template-id "::"
+
+lambda-expression ::=
+    lambda-introducer lambda-declarator? compound-statement
+
+lambda-introducer ::=
+    "[" lambda-capture? "]"
+
+lambda-capture ::=
+    capture-default
+  | capture-list
+  | capture-default "," capture-list
+
+capture-default ::=
+    "&"
+  | "="
+
+capture-list ::=
+    capture "..."?
+  | capture-list "," capture "..."?
+
+capture ::=
+    simple-capture
+  | init-capture
+
+simple-capture ::=
+    identifier
+  | "&" identifier
+  | "this"
+
+init-capture ::=
+    identifier initializer
+  | "&" identifier initializer
+
+lambda-declarator ::=
+    "(" parameter-declaration-clause ")" "mutable"?
+        exception-specification? attribute-specifier-seq? trailing-return-type?
+
+postfix-expression ::=
+    primary-expression
+  | postfix-expression "[" expression "]"
+  | postfix-expression "[" braced-init-list "]"
+  | postfix-expression "(" expression-list? ")"
+  | simple-type-specifier "(" expression-list? ")"
+  | typename-specifier "(" expression-list? ")"
+  | simple-type-specifier braced-init-list
+  | typename-specifier braced-init-list
+  | postfix-expression "." "template"? id-expression
+  | postfix-expression "->" "template"? id-expression
+  | postfix-expression "." pseudo-destructor-name
+  | postfix-expression "->" pseudo-destructor-name
+  | postfix-expression "++"
+  | postfix-expression "--"
+  | "dynamic_cast" "<" type-id ">" "(" expression ")"
+  | "static_cast" "<" type-id ">" "(" expression ")"
+  | "reinterpret_cast" "<" type-id ">" "(" expression ")"
+  | "const_cast" "<" type-id ">" "(" expression ")"
+  | "typeid" "(" expression ")"
+  | "typeid" "(" type-id ")"
+
+expression-list ::=
+    initializer-list
+
+pseudo-destructor-name ::=
+    nested-name-specifier? type-name "::~" type-name
+  | nested-name-specifier "template" simple-template-id "::~" type-name
+  | nested-name-specifier? "~" type-name
+  | "~" decltype-specifier
+
+unary-expression ::=
+    postfix-expression
+  | "++" cast-expression
+  | "--" cast-expression
+  | unary-operator cast-expression
+  | "sizeof" unary-expression
+  | "sizeof" "(" type-id ")"
+  | "sizeof" "..." "(" identifier ")"
+  | "alignof" "(" type-id ")"
+  | noexcept-expression
+  | new-expression
+  | delete-expression
+
+unary-operator ::=
+    "*" | "&" | "+" | "-" | "!" | "~"
+
+new-expression ::=
+    "::"? "new" new-placement? new-type-id new-initializer?
+  | "::"? "new" new-placement? "(" type-id ")" new-initializer?
+
+new-placement ::=
+    "(" expression-list ")"
+
+new-type-id ::=
+    type-specifier-seq new-declarator?
+
+new-declarator ::=
+    ptr-operator new-declarator?
+  | noptr-new-declarator
+
+noptr-new-declarator ::=
+    "[" expression "]" attribute-specifier-seq?
+  | noptr-new-declarator "[" constant-expression "]" attribute-specifier-seq?
+
+new-initializer ::=
+    "(" expression-list? ")"
+  | braced-init-list
+
+delete-expression ::=
+    "::"? "delete" cast-expression
+  | "::"? "delete[]" cast-expression
+
+noexcept-expression ::=
+  "noexcept" "(" expression ")"
+
+cast-expression ::=
+    unary-expression
+  | "(" type-id ")" cast-expression
+
+pm-expression ::=
+    cast-expression
+  | pm-expression ".*" cast-expression
+  | pm-expression "->*" cast-expression
+
+multiplicative-expression ::=
+    pm-expression
+  | multiplicative-expression "*" pm-expression
+  | multiplicative-expression "/" pm-expression
+  | multiplicative-expression "%" pm-expression
+
+additive-expression ::=
+    multiplicative-expression
+  | additive-expression "+" multiplicative-expression
+  | additive-expression "-" multiplicative-expression
+
+shift-expression ::=
+    additive-expression
+  | shift-expression "<<" additive-expression
+  | shift-expression ">>" additive-expression
+
+relational-expression ::=
+    shift-expression
+  | relational-expression "<" shift-expression
+  | relational-expression ">" shift-expression
+  | relational-expression "<=" shift-expression
+  | relational-expression ">=" shift-expression
+
+equality-expression ::=
+    relational-expression
+  | equality-expression "==" relational-expression
+  | equality-expression "!=" relational-expression
+
+and-expression ::=
+    equality-expression
+  | and-expression "&" equality-expression
+
+exclusive-or-expression ::=
+    and-expression
+  | exclusive-or-expression "^" and-expression
+
+inclusive-or-expression ::=
+    exclusive-or-expression
+  | inclusive-or-expression "|" exclusive-or-expression
+
+logical-and-expression ::=
+    inclusive-or-expression
+  | logical-and-expression "&&" inclusive-or-expression
+
+logical-or-expression ::=
+    logical-and-expression
+  | logical-or-expression "||" logical-and-expression
+
+conditional-expression ::=
+    logical-or-expression
+  | logical-or-expression "?" expression ":" assignment-expression
+
+assignment-expression ::=
+    conditional-expression
+  | logical-or-expression assignment-operator initializer-clause
+  | throw-expression
+
+assignment-operator ::=
+    "=" | "*=" | "/=" | "%=" | "+=" | "-=" | ">>=" | "<<=" | "&=" | "^=" | "|="
+
+expression ::=
+    assignment-expression
+  | expression "," assignment-expression
+
+constant-expression ::=
+    conditional-expression
+
+statement ::=
+    labeled-statement
+  | attribute-specifier-seq? expression-statement
+  | attribute-specifier-seq? compound-statement
+  | attribute-specifier-seq? selection-statement
+  | attribute-specifier-seq? iteration-statement
+  | attribute-specifier-seq? jump-statement
+  | declaration-statement
+  | attribute-specifier-seq? try-block
+
+labeled-statement ::=
+    attribute-specifier-seq? identifier ":" statement
+  | attribute-specifier-seq? "case" constant-expression ":" statement
+  | attribute-specifier-seq? "default" ":" statement
+
+expression-statement ::=
+    expression? ";"
+
+compound-statement ::=
+    "{" statement-seq? "}"
+
+statement-seq ::=
+    statement
+  | statement-seq statement
+
+selection-statement ::=
+    "if" "(" condition ")" statement
+  | "if" "(" condition ")" statement "else" statement
+  | "switch" "(" condition ")" statement
+
+condition ::=
+    expression
+  | attribute-specifier-seq? decl-specifier-seq declarator "=" initializer-clause
+  | attribute-specifier-seq? decl-specifier-seq declarator braced-init-list
+
+iteration-statement ::=
+    "while" "(" condition ")" statement
+  | "do" statement "while" "(" expression ")" ";"
+  | "for" "(" for-init-statement condition? ";" expression? ")" statement
+  | "for" "(" for-range-declaration ":" for-range-initializer ")" statement
+
+for-init-statement ::=
+    expression-statement
+  | simple-declaration
+
+for-range-declaration ::=
+    attribute-specifier-seq? decl-specifier-seq declarator
+
+for-range-initializer ::=
+    expression
+  | braced-init-list
+
+jump-statement ::=
+    "break" ";"
+  | "continue" ";"
+  | "return" expression? ";"
+  | "return" braced-init-list ";"
+  | "goto" identifier ";"
+
+declaration-statement ::=
+    block-declaration
+
+declaration-seq ::=
+    declaration
+  | declaration-seq declaration
+
+declaration ::=
+    block-declaration
+  | function-definition
+  | template-declaration
+  | explicit-instantiation
+  | explicit-specialization
+  | linkage-specification
+  | namespace-definition
+  | empty-declaration
+  | attribute-declaration
+
+block-declaration ::=
+    simple-declaration
+  | asm-definition
+  | namespace-alias-definition
+  | using-declaration
+  | using-directive
+  | static_assert-declaration
+  | alias-declaration
+  | opaque-enum-declaration
+
+alias-declaration ::=
+    "using" identifier attribute-specifier-seq? "=" type-id ";"
+
+simple-declaration ::=
+    decl-specifier-seq? init-declarator-list? ";"
+  | attribute-specifier-seq decl-specifier-seq? init-declarator-list ";"
+
+static_assert-declaration ::=
+  "static_assert" "(" constant-expression "," string-literal ")" ";"
+
+empty-declaration ::=
+    ";"
+
+attribute-declaration ::=
+    attribute-specifier-seq ";"
+
+decl-specifier ::=
+    storage-class-specifier
+  | type-specifier
+  | function-specifier
+  | "friend"
+  | "typedef"
+  | "constexpr"
+
+decl-specifier-seq ::=
+    decl-specifier attribute-specifier-seq?
+  | decl-specifier decl-specifier-seq
+
+storage-class-specifier ::=
+    "register"
+  | "static"
+  | "thread_local"
+  | "extern"
+  | "mutable"
+
+function-specifier ::=
+    "inline"
+  | "virtual"
+  | "explicit"
+
+typedef-name ::=
+    identifier
+
+type-specifier ::=
+    trailing-type-specifier
+  | class-specifier
+  | enum-specifier
+
+trailing-type-specifier ::=
+  simple-type-specifier
+  | elaborated-type-specifier
+  | typename-specifier
+  | cv-qualifier
+
+type-specifier-seq ::=
+    type-specifier attribute-specifier-seq?
+  | type-specifier type-specifier-seq
+
+trailing-type-specifier-seq ::=
+  trailing-type-specifier attribute-specifier-seq?
+  | trailing-type-specifier trailing-type-specifier-seq
+
+simple-type-specifier ::=
+    nested-name-specifier? type-name
+  | nested-name-specifier "template" simple-template-id
+  | "char"
+  | "char16_t"
+  | "char32_t"
+  | "wchar_t"
+  | "bool"
+  | "short"
+  | "int"
+  | "long"
+  | "signed"
+  | "unsigned"
+  | "float"
+  | "double"
+  | "void"
+  | "auto"
+  | decltype-specifier
+
+type-name ::=
+    class-name
+  | enum-name
+  | typedef-name
+  | simple-template-id
+
+decltype-specifier ::=
+  "decltype" "(" expression ")"
+  | "decltype" "(" "auto" ")"
+
+elaborated-type-specifier ::=
+    class-key attribute-specifier-seq? nested-name-specifier? identifier
+  | class-key nested-name-specifier? "template"? simple-template-id
+  | "enum" nested-name-specifier? identifier
+
+enum-name ::=
+    identifier
+
+enum-specifier ::=
+    enum-head "{" enumerator-list? "}"
+  | enum-head "{" enumerator-list "," "}"
+
+enum-head ::=
+    enum-key attribute-specifier-seq? identifier? enum-base?
+  | enum-key attribute-specifier-seq? nested-name-specifier identifier
+        enum-base?
+
+opaque-enum-declaration ::=
+    enum-key attribute-specifier-seq? identifier enum-base? ";"
+
+enum-key ::=
+    "enum"
+  | "enum" "class"
+  | "enum" "struct"
+
+enum-base ::=
+    ":" type-specifier-seq
+
+enumerator-list ::=
+    enumerator-definition
+  | enumerator-list "," enumerator-definition
+
+enumerator-definition ::=
+    enumerator
+  | enumerator "=" constant-expression
+
+enumerator ::=
+    identifier
+
+namespace-name ::=
+        original-namespace-name
+  | namespace-alias
+
+original-namespace-name ::=
+        identifier
+
+namespace-definition ::=
+        named-namespace-definition
+  | unnamed-namespace-definition
+
+named-namespace-definition ::=
+        original-namespace-definition
+  | extension-namespace-definition
+
+original-namespace-definition ::=
+        "inline"? "namespace" identifier "{" namespace-body "}"
+
+extension-namespace-definition ::=
+        "inline"? "namespace" original-namespace-name "{" namespace-body "}"
+
+unnamed-namespace-definition ::=
+        "inline"? "namespace" "{" namespace-body "}"
+
+namespace-body ::=
+        declaration-seq?
+
+namespace-alias ::=
+        identifier
+
+namespace-alias-definition ::=
+        "namespace" identifier "=" qualified-namespace-specifier ";"
+
+qualified-namespace-specifier ::=
+    nested-name-specifier? namespace-name
+
+using-declaration ::=
+    "using" "typename"? nested-name-specifier unqualified-id ";"
+  | "using" "::" unqualified-id ";"
+
+using-directive ::=
+    attribute-specifier-seq? "using" "namespace" nested-name-specifier? namespace-name ";"
+
+asm-definition ::=
+    "asm" "(" string-literal ");"
+
+linkage-specification ::=
+    "extern" string-literal "{" declaration-seq? "}"
+  | "extern" string-literal declaration
+
+attribute-specifier-seq ::=
+  attribute-specifier-seq? attribute-specifier
+
+attribute-specifier ::=
+  "[" "[" attribute-list "]" "]"
+  | alignment-specifier
+
+alignment-specifier ::=
+  "alignas" "(" type-id "..."? ")"
+  | "alignas" "(" assignment-expression "..."? ")"
+
+attribute-list ::=
+  attribute?
+  | attribute-list "," attribute?
+  | attribute "..."
+  | attribute-list "," attribute "..."
+
+attribute ::=
+    attribute-token attribute-argument-clause?
+
+attribute-token ::=
+    identifier
+  | attribute-scoped-token
+
+attribute-scoped-token ::=
+    attribute-namespace "::" identifier
+
+attribute-namespace ::=
+    identifier
+
+attribute-argument-clause ::=
+    "(" balanced-token-seq ")"
+
+balanced-token-seq ::=
+    balanced-token?
+  | balanced-token-seq balanced-token
+
+balanced-token ::=
+    "(" balanced-token-seq ")"
+  | "[" balanced-token-seq "]"
+  | "{" balanced-token-seq "}"
+  | "{any token other than a parenthesis, a bracket, or a brace}"
+
+init-declarator-list ::=
+    init-declarator
+  | init-declarator-list "," init-declarator
+
+init-declarator ::=
+    declarator initializer?
+
+declarator ::=
+    ptr-declarator
+  | noptr-declarator parameters-and-qualifiers trailing-return-type
+
+ptr-declarator ::=
+    noptr-declarator
+  | ptr-operator ptr-declarator
+
+noptr-declarator ::=
+    declarator-id attribute-specifier-seq?
+  | noptr-declarator parameters-and-qualifiers
+  | noptr-declarator "[" expression? "]" attribute-specifier-seq?
+  | "(" ptr-declarator ")"
+
+parameters-and-qualifiers ::=
+    "(" parameter-declaration-clause ")" cv-qualifier-seq?
+        ref-qualifier? exception-specification? attribute-specifier-seq?
+
+trailing-return-type ::=
+    "->" trailing-type-specifier-seq abstract-declarator?
+
+ptr-operator ::=
+    "*" attribute-specifier-seq? cv-qualifier-seq?
+  | "&" attribute-specifier-seq?
+  | "&&" attribute-specifier-seq?
+  | nested-name-specifier "*" attribute-specifier-seq? cv-qualifier-seq?
+
+cv-qualifier-seq ::=
+    cv-qualifier cv-qualifier-seq?
+
+cv-qualifier ::=
+    "const"
+  | "volatile"
+
+ref-qualifier ::=
+    "&"
+  | "&&"
+
+declarator-id ::=
+    "..."? id-expression
+
+type-id ::=
+    type-specifier-seq abstract-declarator?
+
+abstract-declarator ::=
+    ptr-abstract-declarator
+  | noptr-abstract-declarator? parameters-and-qualifiers trailing-return-type
+  | abstract-pack-declarator
+
+ptr-abstract-declarator ::=
+    noptr-abstract-declarator
+  | ptr-operator ptr-abstract-declarator?
+
+noptr-abstract-declarator ::=
+    noptr-abstract-declarator? parameters-and-qualifiers
+  | noptr-abstract-declarator? "[" constant-expression? "]" attribute-specifier-seq?
+  | "(" ptr-abstract-declarator ")"
+
+abstract-pack-declarator ::=
+    noptr-abstract-pack-declarator
+  | ptr-operator abstract-pack-declarator
+
+noptr-abstract-pack-declarator ::=
+    noptr-abstract-pack-declarator parameters-and-qualifiers
+  | noptr-abstract-pack-declarator "[" constant-expression? "]" attribute-specifier-seq?
+  | "..."
+
+parameter-declaration-clause ::=
+    parameter-declaration-list? "..."?
+  | parameter-declaration-list "," "..."
+
+parameter-declaration-list ::=
+    parameter-declaration
+  | parameter-declaration-list "," parameter-declaration
+
+parameter-declaration ::=
+    attribute-specifier-seq? decl-specifier-seq declarator
+  | attribute-specifier-seq? decl-specifier-seq declarator "=" initializer-clause
+  | attribute-specifier-seq? decl-specifier-seq abstract-declarator?
+  | attribute-specifier-seq? decl-specifier-seq abstract-declarator? "=" initializer-clause
+
+function-definition ::=
+    attribute-specifier-seq? decl-specifier-seq? declarator virt-specifier-seq? function-body
+
+function-body ::=
+    ctor-initializer? compound-statement
+  | function-try-block
+  | "=" "default" ";"
+  | "=" "delete" ";"
+
+initializer ::=
+    brace-or-equal-initializer
+  | "(" expression-list ")"
+
+brace-or-equal-initializer ::=
+    "=" initializer-clause
+  | braced-init-list
+
+initializer-clause ::=
+    assignment-expression
+  | braced-init-list
+
+initializer-list ::=
+    initializer-clause "..."?
+  | initializer-list "," initializer-clause "..."?
+
+braced-init-list ::=
+    "{" initializer-list ","? "}"
+  | "{" "}"
+
+class-name ::=
+    identifier
+  | simple-template-id
+
+class-specifier ::=
+    class-head "{" member-specification? "}"
+
+class-head ::=
+    class-key attribute-specifier-seq? class-head-name class-virt-specifier? base-clause?
+  | class-key attribute-specifier-seq? base-clause?
+
+class-head-name ::=
+    nested-name-specifier? class-name
+
+class-virt-specifier ::=
+    "final"
+
+class-key ::=
+    "class"
+  | "struct"
+  | "union"
+
+member-specification ::=
+    member-declaration member-specification?
+  | access-specifier ":" member-specification?
+
+member-declaration ::=
+    attribute-specifier-seq? decl-specifier-seq? member-declarator-list? ";"
+  | function-definition ";"?
+  | using-declaration
+  | static_assert-declaration
+  | template-declaration
+  | alias-declaration
+
+member-declarator-list ::=
+    member-declarator
+  | member-declarator-list "," member-declarator
+
+member-declarator ::=
+    declarator virt-specifier-seq? pure-specifier?
+  | declarator brace-or-equal-initializer?
+  | identifier? attribute-specifier-seq? ":" constant-expression
+
+virt-specifier-seq ::=
+    virt-specifier
+  | virt-specifier-seq virt-specifier
+
+virt-specifier ::=
+    "override"
+  | "final"
+
+pure-specifier ::=
+    "=" "0"
+
+base-clause ::=
+    ":" base-specifier-list
+
+base-specifier-list ::=
+    base-specifier "..."?
+  | base-specifier-list "," base-specifier "..."?
+
+base-specifier ::=
+    attribute-specifier-seq? base-type-specifier
+  | attribute-specifier-seq? "virtual" access-specifier? base-type-specifier
+  | attribute-specifier-seq? access-specifier "virtual"? base-type-specifier
+
+class-or-decltype ::=
+    nested-name-specifier? class-name
+  | decltype-specifier
+
+base-type-specifier ::=
+    class-or-decltype
+
+access-specifier ::=
+    "private"
+  | "protected"
+  | "public"
+
+conversion-function-id ::=
+    "operator" conversion-type-id
+
+conversion-type-id ::=
+    type-specifier-seq conversion-declarator?
+
+conversion-declarator ::=
+    ptr-operator conversion-declarator?
+
+ctor-initializer ::=
+    ":" mem-initializer-list
+
+mem-initializer-list ::=
+    mem-initializer "..."?
+  | mem-initializer "," mem-initializer-list "..."?
+
+mem-initializer ::=
+    mem-initializer-id "(" expression-list? ")"
+  | mem-initializer-id braced-init-list
+
+mem-initializer-id ::=
+    class-or-decltype
+  | identifier
+
+operator-function-id ::=
+    "operator" operator
+
+operator ::=
+  "new" | "delete" | "new[]" | "delete[]"
+  | "+" | "-" | "*" | "/" | "%" | "^" | "&" | "|" | "~"
+  | "!" | "=" | "<" | ">" | "+=" | "-=" | "*=" | "/=" | "%="
+  | "^=" | "&=" | "|=" | "<<" | ">>" | ">>=" | "<<=" | "==" | "!="
+  | "<=" | ">=" | "&&" | "||" | "++" | "--" | "," | "->*" | "->"
+  | "()" | "[]"
+
+literal-operator-id ::=
+    "operator" string-literal identifier
+  | "operator" user-defined-string-literal
+
+template-declaration ::=
+  "template" "<" template-parameter-list ">" declaration
+
+template-parameter-list ::=
+  template-parameter
+  | template-parameter-list "," template-parameter
+
+template-parameter ::=
+  type-parameter
+  | parameter-declaration
+
+type-parameter ::=
+  "class" "..."? identifier?
+  | "class" identifier? "=" type-id
+  | "typename" "..."? identifier?
+  | "typename" identifier? "=" type-id
+  | "template" "<" template-parameter-list ">" "class" "..."? identifier?
+  | "template" "<" template-parameter-list ">" "class" identifier? "=" id-expression
+
+simple-template-id ::=
+  template-name "<" template-argument-list? ">"
+
+template-id ::=
+  simple-template-id
+  | operator-function-id "<" template-argument-list? ">"
+  | literal-operator-id "<" template-argument-list? ">"
+
+template-name ::=
+  identifier
+
+template-argument-list ::=
+  template-argument "..."?
+  | template-argument-list "," template-argument "..."?
+
+template-argument ::=
+  constant-expression
+  | type-id
+  | id-expression
+
+typename-specifier ::=
+  "typename" nested-name-specifier identifier
+  | "typename" nested-name-specifier "template"? simple-template-id
+
+explicit-instantiation ::=
+  "extern"? "template" declaration
+
+explicit-specialization ::=
+  "template" "<" ">" declaration
+
+try-block ::=
+    "try" compound-statement handler-seq
+
+function-try-block ::=
+    "try" ctor-initializer? compound-statement handler-seq
+
+handler-seq ::=
+    handler handler-seq?
+
+handler ::=
+    "catch" "(" exception-declaration ")" compound-statement
+
+exception-declaration ::=
+    attribute-specifier-seq? type-specifier-seq declarator
+  | attribute-specifier-seq? type-specifier-seq abstract-declarator?
+  | "..."
+
+throw-expression ::=
+    "throw"  assignment-expression?
+
+exception-specification ::=
+    dynamic-exception-specification
+  | noexcept-specification
+
+dynamic-exception-specification ::=
+    "throw" "(" type-id-list? ")"
+
+type-id-list ::=
+    type-id "..."?
+  | type-id-list "," type-id "..."?
+
+noexcept-specification ::=
+    "noexcept" "(" constant-expression ")"
+  | "noexcept"
+
+preprocessing-file ::=
+    group?
+
+group ::=
+    group-part
+  | group group-part
+
+group-part ::=
+    if-section
+  | control-line
+  | text-line
+  | "#" non-directive
+
+if-section ::=
+    if-group elif-groups? else-group? endif-line
+
+if-group ::=
+  "#if" constant-expression new-line group?
+  | "#ifdef" identifier new-line group?
+  | "#ifndef" identifier new-line group?
+
+elif-groups ::=
+    elif-group
+  | elif-groups elif-group
+
+elif-group ::=
+  "#elif" constant-expression new-line group?
+
+else-group ::=
+  "#else" new-line group?
+
+endif-line ::=
+  "#endif" new-line
+
+control-line ::=
+  "#include" pp-tokens new-line
+  | "#define" identifier replacement-list new-line
+  | "#define" identifier lparen identifier-list? ")" replacement-list new-line
+  | "#define" identifier lparen "..." ")" replacement-list new-line
+  | "#define" identifier lparen identifier-list "," "..." ")" replacement-list new-line
+  | "#undef" identifier new-line
+  | "#line" pp-tokens new-line
+  | "#error" pp-tokens? new-line
+  | "#pragma" pp-tokens? new-line
+  | "#"new-line
+
+text-line ::=
+    pp-tokens? new-line
+
+non-directive ::=
+    pp-tokens new-line
+
+lparen ::=
+    '{a "(" character not immediately preceded by white-space}'
+
+identifier-list ::=
+    identifier
+  | identifier-list "," identifier
+
+replacement-list ::=
+    pp-tokens?
+
+pp-tokens ::=
+    preprocessing-token
+  | pp-tokens preprocessing-token
+
+new-line ::=
+    "{the new-line character}"
