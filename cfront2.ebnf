@@ -1,0 +1,461 @@
+//
+// EBNF to be viewd at https://www.bottlecaps.de/rr/ui
+//
+// Copy and paste this at https://www.bottlecaps.de/rr/ui in the 'Edit Grammar' tab
+// then click the 'View Diagram' tab.
+//
+// 1985 Feb 08 12:50
+/* %Z% %M% %I% %H% %T% */
+
+/*************************************************************************
+
+	C++ source for cfront, the C++ compiler front-end
+	written in the computer science research center of Bell Labs
+
+	Copyright (c) 1984 AT&T Technologies, Inc. All rigths Reserved
+	THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF AT&T TECHNOLOGIES, INC.
+
+	If you ignore this notice the ghost of Ma Bell will haunt you forever.
+gram.y:
+
+	This is the syntax analyser.
+
+	Old C features not recognized:
+	(1) "+ =" as the operator "+="
+	(2) any construct using one of the new keywords as an identifier
+	(3) initializers without "=" operator
+	(4) structure tags used as identifier names
+
+	Additions:
+	(1) Classes (keywords: CLASS THIS PUBLIC FRIEND and VIRTUAL)
+		(classes incorporate STRUCT and UNION)
+	(2) the new and delete operators (keywords: NEW DELETE)
+	(3) inline functions (keyword INLINE)
+	(4) overloaded function names (keyword OVERLOAD)
+	(5) overloaded operators (keyword OPERATOR)
+	(6) constructors and destructors
+	(7) constant types (keyword: CONST)
+	(8) argument types part of function function type (token: ...)
+	(9) new argument syntax ( e.g. char f(int a, char b) { ... })
+	(10) names can be left out of argument lists
+
+	Syntax extensions for error handling:
+	(1) nested functions
+	(2) any expression can be empty
+	(3) any expression can be a constant_expression
+
+	note that a call to error() does not change the parser's state
+*/
+
+ext_def::=
+	  /*%empty*/
+	| external_def
+	| SM
+
+external_def::=
+	  data_dcl
+	| att_fct_def
+	| fct_def
+	| fct_dcl
+	| ASM LP STRING RP SM
+
+fct_dcl::=
+	  decl SM
+
+att_fct_def::=
+	  type decl arg_dcl_list base_init block
+
+fct_def::=
+	  decl arg_dcl_list base_init block
+
+base_init::=
+	  COLON LP elist RP
+	| /*%empty*/
+
+arg_dcl_list::=
+	  arg_dcl_list data_dcl
+	| /*%empty*/
+
+dl::=
+	  decl
+	| ID COLON e
+	| COLON e
+	| decl ASSIGN initializer
+
+decl_list::=
+	  dl
+	| decl_list CM dl
+
+data_dcl::=
+	  type decl_list SM
+	| type SM
+
+tp::=
+	  TYPE
+	| TNAME
+	| class_dcl
+	| enum_dcl
+	| AGGR tag
+	| ENUM tag
+
+type::=
+	  tp
+	| type TYPE
+	| type TNAME
+	| type class_dcl
+	| type enum_dcl
+	| type AGGR tag
+	| type ENUM tag
+
+enum_dcl::=
+	  ENUM LC moe_list RC
+	| ENUM tag LC moe_list RC
+
+moe_list::=
+	  moe
+	| moe_list CM moe
+
+moe::=
+	  ID
+	| ID ASSIGN e
+	| /*%empty*/
+
+class_dcl::=
+	  class_head mem_list RC
+	| class_head mem_list RC TYPE
+
+class_head::=
+	  AGGR LC
+	| AGGR tag LC
+	| AGGR tag COLON tag LC
+	| AGGR tag COLON PUBLIC tag LC
+
+tag::=
+	  ID
+	| TNAME
+
+mem_list::=
+	  cl_mem_list
+	| cl_mem_list PUBLIC cl_mem_list
+	| cl_mem_list PUBLIC COLON cl_mem_list
+
+cl_mem_list::=
+	  cl_mem_list cl_mem
+	| /*%empty*/
+
+cl_mem::=
+	  data_dcl
+	| att_fct_def SM
+	| att_fct_def
+	| fct_def SM
+	| fct_def
+	| fct_dcl
+	| tn_list tag SM
+
+fname::=
+	  ID
+	| COMPL TNAME
+	| DELETE
+	| NEW
+	| OPERATOR oper
+	| OPERATOR c_type
+
+oper::=
+	  PLUS
+	| MINUS
+	| MUL
+	| AND
+	| OR
+	| ER
+	| SHIFTOP
+	| EQUOP
+	| DIVOP
+	| RELOP
+	| ANDAND
+	| OROR
+	| LP RP
+	| LB RB
+	| NOT
+	| COMPL
+	| ICOP
+	| ASOP
+	| ASSIGN
+	| NEW
+	| DELETE
+
+tn_list::=
+	  TNAME DOT
+	| tn_list TNAME DOT
+	| tn_list ID DOT
+
+decl::=
+	  decl arg_list
+	| TNAME arg_list
+	| decl LP elist RP
+	| TNAME LP elist RP
+	| fname
+	| ID DOT fname
+	| tn_list fname
+	| tn_list TNAME
+	| ptr decl
+	| ptr TNAME
+	| TNAME vec
+	| decl vec
+	| LP decl RP arg_list
+	| LP decl RP vec
+
+arg_decl::=
+	  ID
+	| /*%empty*/
+	| ptr arg_decl
+	| arg_decl vec
+	| LP arg_decl RP arg_list
+	| LP arg_decl RP vec
+
+new_decl::=
+	  /*%empty*/
+	| ptr new_decl
+	| new_decl vec
+
+cast_decl::=
+	  /*%empty*/
+	| ptr cast_decl
+	| cast_decl vec
+	| LP cast_decl RP arg_list
+	| LP cast_decl RP vec
+
+c_decl::=
+	  /*%empty*/
+	| ptr c_decl
+
+stmt_list::=
+	  stmt_list statement
+	| statement
+
+condition::=
+	  LP e RP
+
+block::=
+	  LC stmt_list RC
+	| LC RC
+
+simple::=
+	  e
+	| BREAK
+	| CONTINUE
+	| RETURN e
+	| GOTO ID
+	| DELETE e
+	| DO statement WHILE condition
+
+statement::=
+	  simple SM
+	| ASM LP STRING RP SM
+	| data_dcl
+	| att_fct_def
+	| block
+	| IF condition statement
+	| IF condition statement ELSE statement
+	| WHILE condition statement
+	| FOR LP statement e SM e RP statement
+	| FOR CAST statement e SM e RP statement
+	| SWITCH condition statement
+	| ID COLON statement
+	| CASE e COLON statement
+	| DEFAULT COLON statement
+
+elist::=
+	  ex_list
+
+ex_list::=
+	  initializer
+	| ex_list CM initializer
+
+initializer::=
+	  e
+	| LC elist RC
+
+e::=
+	  e ASSIGN e
+	| e PLUS e
+	| e MINUS e
+	| e MUL e
+	| e AND e
+	| e OR e
+	| e ER e
+	| e SHIFTOP e
+	| e EQUOP e
+	| e DIVOP e
+	| e RELOP e
+	| e ANDAND e
+	| e OROR e
+	| e ASOP e
+	| e CM e
+	| e QUEST e COLON e
+	| term
+
+term::=
+	  TYPE LP elist RP
+	| TNAME LP elist RP
+	| NEW new_type
+	| NEW LP new_type RP
+	| term ICOP
+	| CAST cast_type RP term
+	| MUL term
+	| AND term
+	| MINUS term
+	| NOT term
+	| COMPL term
+	| ICOP term
+	| SIZEOF term
+	| term LB e RB
+	| term LP elist RP
+	| term REF prim
+	| term REF TNAME
+	| term DOT prim
+	| term DOT TNAME
+	| MEM tag
+	| prim
+	| LP e RP
+	| ZERO
+	| ICON
+	| FCON
+	| STRING
+	| CCON
+	| THIS
+	| /*%empty*/
+
+prim::=
+	  ID
+	| TNAME MEM tag
+	| OPERATOR oper
+	| TNAME MEM OPERATOR oper
+
+cast_type::=
+	  type cast_decl
+
+c_tp::=
+	  TYPE
+	| TNAME
+
+c_type::=
+	  c_tp c_decl
+
+new_type::=
+	  type new_decl
+
+arg_type::=
+	  type arg_decl
+	| type arg_decl ASSIGN initializer
+
+arg_list::=
+	  CAST arg_type_list RP
+	| CAST arg_type_list ELLIPSIS RP
+	| CAST arg_type_list CM ELLIPSIS RP
+	| LP arg_type_list RP
+	| LP arg_type_list ELLIPSIS RP
+	| LP arg_type_list CM ELLIPSIS RP
+
+arg_type_list::=
+	  arg_type_list CM at
+	| at
+
+at::=
+	  arg_type
+	| /*%empty*/
+
+ptr::=
+	  MUL
+	| AND
+	| MUL TYPE
+	| AND TYPE
+
+vec::=
+	  LB e RB
+
+
+
+//Lexer
+
+ASM ::= "asm"
+AUTO ::= "auto"
+BREAK ::= "break"
+CASE ::= "case"
+CONTINUE ::= "continue"
+CHAR ::= "char"
+DO ::= "do"
+DOUBLE ::= "double"
+DEFAULT ::= "default"
+ENUM ::= "enum"
+ELSE ::= "else"
+EXTERN ::= "extern"
+FLOAT ::= "float"
+FOR ::= "for"
+GOTO ::= "goto"
+IF ::= "if"
+INT ::= "int"
+LONG ::= "long"
+RETURN ::= "return"
+REGISTER ::= "register"
+STATIC ::= "static"
+STRUCT ::= "struct"
+SIZEOF ::= "sizeof"
+SHORT ::= "short"
+SWITCH ::= "switch"
+TYPEDEF ::= "typedef"
+UNSIGNED ::= "unsigned"
+UNION ::= "union"
+VOID ::= "void"
+WHILE ::= "while"
+
+CLASS ::= "class"
+DELETE ::= "delete"
+FRIEND ::= "friend"
+OPERATOR ::= "operator"
+NEW ::= "new"
+PUBLIC ::= "public"
+CONST ::= "const"
+THIS ::= "this"
+INLINE ::= "inline"
+VIRTUAL ::= "virtual"
+OVERLOAD ::= "overload"
+
+VOLATILE ::= "volatile"
+SIGNED ::= "signed"
+
+//AGGR ::= AGGR
+AND ::= "&"
+ANDAND ::= "&&"
+//ASOP ::= ASOP
+ASSIGN ::= "="
+//CAST ::= CAST
+CM ::= ","
+COLON ::= ":"
+COMPL ::= "~"
+DIVOP ::= "/"
+DOT ::= "."
+ELLIPSIS ::= "..."
+//ENDCAST ::= ENDCAST
+EQUOP ::= "=="
+ER ::= "^"
+//ICOP ::= ICOP
+LB ::= "["
+LC ::= "{"
+LP ::= "("
+//MEM ::= MEM
+MINUS ::= "-"
+MUL ::= "*"
+NOT ::= "!"
+OR ::= "|"
+OROR ::= "||"
+PLUS ::= "+"
+QUEST ::= "?"
+RB ::= "]"
+RC ::= "}"
+//REF ::= REF
+//RELOP ::= RELOP
+RP ::= ")"
+SHIFTOP ::= "<<"
+SM ::= ";"
+//TYPE ::= TYPE
+//ZERO ::= ZERO

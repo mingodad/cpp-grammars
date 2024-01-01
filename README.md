@@ -15,3 +15,9 @@ The g++-3.3.6 grammar (the last using yacc/bison).
 The open-watcom-v2 grammar.
 
 - [open-watcom-v2](https://mingodad.github.io/cpp-grammars/open-watcom-v2.ebnf.xhtml)
+
+The cfront grammars.
+
+- [cfront1](https://mingodad.github.io/cpp-grammars/cfront1.ebnf.xhtml)
+- [cfront2](https://mingodad.github.io/cpp-grammars/cfront2.ebnf.xhtml)
+- [cfront3](https://mingodad.github.io/cpp-grammars/cfront3.ebnf.xhtml)
