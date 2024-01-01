@@ -1,0 +1,1234 @@
+/* YACC parser for C++ syntax.
+   Copyright (C) 1988, 1989, 1993, 1994, 1995, 1996, 1997, 1998,
+   1999, 2000, 2001, 2002 Free Software Foundation, Inc.
+   Hacked by Michael Tiemann (tiemann@cygnus.com)
+
+This file is part of GNU CC.
+
+GNU CC is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2, or (at your option)
+any later version.
+
+GNU CC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with GNU CC; see the file COPYING.  If not, write to
+the Free Software Foundation, 59 Temple Place - Suite 330,
+Boston, MA 02111-1307, USA.  */
+
+
+/* This grammar is based on the GNU CC grammar.  */
+
+program ::= /*empty*/
+	| extdefs
+
+extdefs ::= lang_extdef
+	| extdefs lang_extdef
+
+extdefs_opt ::= extdefs
+	| /*empty*/
+
+.hush_warning ::= /*empty*/
+
+.warning_ok ::= /*empty*/
+
+extension ::= EXTENSION
+
+asm_keyword ::= ASM_KEYWORD
+
+lang_extdef ::= extdef
+
+extdef ::= fndef eat_saved_input
+	| datadef
+	| EXPORT template_def
+	| template_def
+	| asm_keyword '(' STRING ')' ';'
+	| extern_lang_string '{' extdefs_opt '}'
+	| extern_lang_string .hush_warning fndef .warning_ok eat_saved_input
+	| extern_lang_string .hush_warning datadef .warning_ok
+	| NAMESPACE identifier '{' extdefs_opt '}'
+	| NAMESPACE '{' extdefs_opt '}'
+	| namespace_alias
+	| using_decl ';'
+	| using_directive
+	| extension extdef
+
+namespace_alias ::= NAMESPACE identifier '=' any_id ';'
+
+using_decl ::= USING qualified_id
+	| USING global_scope qualified_id
+	| USING global_scope unqualified_id
+
+namespace_using_decl ::= USING namespace_qualifier identifier
+	| USING global_scope identifier
+	| USING global_scope namespace_qualifier identifier
+
+using_directive ::= USING NAMESPACE any_id ';'
+
+namespace_qualifier ::= NSNAME SCOPE
+	| namespace_qualifier NSNAME SCOPE
+
+any_id ::= unqualified_id
+	| qualified_id
+	| global_scope qualified_id
+	| global_scope unqualified_id
+
+extern_lang_string ::= EXTERN_LANG_STRING
+	| extern_lang_string EXTERN_LANG_STRING
+
+template_parm_header ::= TEMPLATE '<' template_parm_list '>'
+
+template_spec_header ::= TEMPLATE '<' '>'
+
+template_header ::= template_parm_header
+	| template_spec_header
+
+template_parm_list ::= template_parm
+	| template_parm_list ',' template_parm
+
+maybe_identifier ::= identifier
+	| /*empty*/
+
+template_type_parm ::= aggr maybe_identifier
+	| TYPENAME_KEYWORD maybe_identifier
+
+template_template_parm ::= template_parm_header aggr maybe_identifier
+
+template_parm ::= template_type_parm
+	| template_type_parm '=' type_id
+	| parm
+	| parm '=' expr_no_comma_rangle
+	| template_template_parm
+	| template_template_parm '=' template_arg
+
+template_def ::= template_header template_extdef
+	| template_header error
+
+template_extdef ::= fndef eat_saved_input
+	| template_datadef
+	| template_def
+	| extern_lang_string .hush_warning fndef .warning_ok eat_saved_input
+	| extern_lang_string .hush_warning template_datadef .warning_ok
+	| extension template_extdef
+
+template_datadef ::= nomods_initdecls ';'
+	| declmods notype_initdecls ';'
+	| typed_declspecs initdecls ';'
+	| structsp ';'
+
+datadef ::= nomods_initdecls ';'
+	| declmods notype_initdecls ';'
+	| typed_declspecs initdecls ';'
+	| declmods ';'
+	| explicit_instantiation ';'
+	| typed_declspecs ';'
+	| error ';'
+	| error '}'
+	| error END_OF_SAVED_INPUT
+	| ';'
+	| bad_decl
+
+ctor_initializer_opt ::= nodecls
+	| base_init
+
+maybe_return_init ::= /*empty*/
+	| return_init
+	| return_init ';'
+
+eat_saved_input ::= /*empty*/
+	| END_OF_SAVED_INPUT
+
+function_body ::= begin_function_body_ ctor_initializer_opt save_lineno '{' compstmtend
+
+fndef ::= fn.def1 maybe_return_init function_body
+	| fn.def1 maybe_return_init function_try_block
+	| fn.def1 maybe_return_init error
+
+constructor_declarator ::= nested_name_specifier SELFNAME '(' parmlist ')' cv_qualifiers exception_specification_opt
+	| nested_name_specifier SELFNAME LEFT_RIGHT cv_qualifiers exception_specification_opt
+	| global_scope nested_name_specifier SELFNAME '(' parmlist ')' cv_qualifiers exception_specification_opt
+	| global_scope nested_name_specifier SELFNAME LEFT_RIGHT cv_qualifiers exception_specification_opt
+	| nested_name_specifier self_template_type '(' parmlist ')' cv_qualifiers exception_specification_opt
+	| nested_name_specifier self_template_type LEFT_RIGHT cv_qualifiers exception_specification_opt
+	| global_scope nested_name_specifier self_template_type '(' parmlist ')' cv_qualifiers exception_specification_opt
+	| global_scope nested_name_specifier self_template_type LEFT_RIGHT cv_qualifiers exception_specification_opt
+
+fn.def1 ::= typed_declspecs declarator
+	| declmods notype_declarator
+	| notype_declarator
+	| declmods constructor_declarator
+	| constructor_declarator
+
+component_constructor_declarator ::= SELFNAME '(' parmlist ')' cv_qualifiers exception_specification_opt
+	| '(' SELFNAME ')' '(' parmlist ')' cv_qualifiers exception_specification_opt
+	| SELFNAME LEFT_RIGHT cv_qualifiers exception_specification_opt
+	| '(' SELFNAME ')' LEFT_RIGHT cv_qualifiers exception_specification_opt
+	| self_template_type '(' parmlist ')' cv_qualifiers exception_specification_opt
+	| self_template_type LEFT_RIGHT cv_qualifiers exception_specification_opt
+
+fn_def2 ::= declmods component_constructor_declarator
+	| component_constructor_declarator
+	| typed_declspecs declarator
+	| declmods notype_declarator
+	| notype_declarator
+	| declmods constructor_declarator
+	| constructor_declarator
+
+return_id ::= RETURN_KEYWORD IDENTIFIER
+
+return_init ::= return_id maybe_init
+	| return_id '(' nonnull_exprlist ')'
+	| return_id LEFT_RIGHT
+
+base_init ::= ':' member_init_list
+
+begin_function_body_ ::= /*empty*/
+
+member_init_list ::= /*empty*/
+	| member_init
+	| member_init_list ',' member_init
+	| member_init_list error
+
+begin_member_init ::= /*empty*/
+	| notype_identifier
+	| nonnested_type
+	| typename_sub
+
+member_init ::= begin_member_init '(' nonnull_exprlist ')'
+	| begin_member_init LEFT_RIGHT
+	| error
+
+identifier ::= IDENTIFIER
+	| tTYPENAME
+	| SELFNAME
+	| PTYPENAME
+	| NSNAME
+
+notype_identifier ::= IDENTIFIER
+	| PTYPENAME
+	| NSNAME
+
+identifier_defn ::= IDENTIFIER_DEFN
+	| TYPENAME_DEFN
+	| PTYPENAME_DEFN
+
+explicit_instantiation ::= TEMPLATE begin_explicit_instantiation typespec ';' end_explicit_instantiation
+	| TEMPLATE begin_explicit_instantiation typed_declspecs declarator end_explicit_instantiation
+	| TEMPLATE begin_explicit_instantiation notype_declarator end_explicit_instantiation
+	| TEMPLATE begin_explicit_instantiation constructor_declarator end_explicit_instantiation
+	| SCSPEC TEMPLATE begin_explicit_instantiation typespec ';' end_explicit_instantiation
+	| SCSPEC TEMPLATE begin_explicit_instantiation typed_declspecs declarator end_explicit_instantiation
+	| SCSPEC TEMPLATE begin_explicit_instantiation notype_declarator end_explicit_instantiation
+	| SCSPEC TEMPLATE begin_explicit_instantiation constructor_declarator end_explicit_instantiation
+
+begin_explicit_instantiation ::= /*empty*/
+
+end_explicit_instantiation ::= /*empty*/
+
+template_type ::= PTYPENAME '<' template_arg_list_opt template_close_bracket finish_template_type_
+	| tTYPENAME '<' template_arg_list_opt template_close_bracket finish_template_type_
+	| self_template_type
+
+apparent_template_type ::= template_type
+	| identifier '<' template_arg_list_opt '>' finish_template_type_
+
+self_template_type ::= SELFNAME '<' template_arg_list_opt template_close_bracket finish_template_type_
+
+finish_template_type_ ::= /*empty*/
+
+template_close_bracket ::= '>'
+	| RSHIFT
+
+template_arg_list_opt ::= /*empty*/
+	| template_arg_list
+
+template_arg_list ::= template_arg
+	| template_arg_list ',' template_arg
+
+template_arg ::= template_arg_1
+
+template_arg_1 ::= type_id
+	| PTYPENAME
+	| global_scope PTYPENAME
+	| expr_no_comma_rangle
+	| nested_name_specifier TEMPLATE identifier
+
+unop ::= '-'
+	| '+'
+	| PLUSPLUS
+	| MINUSMINUS
+	| '!'
+
+expr ::= nontrivial_exprlist
+	| expr_no_commas
+
+paren_expr_or_null ::= LEFT_RIGHT
+	| '(' expr ')'
+
+paren_cond_or_null ::= LEFT_RIGHT
+	| '(' condition ')'
+
+xcond ::= /*empty*/
+	| condition
+	| error
+
+condition ::= type_specifier_seq declarator maybeasm maybe_attribute '=' init
+	| expr
+
+compstmtend ::= '}'
+	| maybe_label_decls stmts '}'
+	| maybe_label_decls stmts error '}'
+	| maybe_label_decls error '}'
+
+nontrivial_exprlist ::= expr_no_commas ',' expr_no_commas
+	| expr_no_commas ',' error
+	| nontrivial_exprlist ',' expr_no_commas
+	| nontrivial_exprlist ',' error
+
+nonnull_exprlist ::= expr_no_commas
+	| nontrivial_exprlist
+
+unary_expr ::= primary
+	| extension cast_expr
+	| '*' cast_expr
+	| '&' cast_expr
+	| '~' cast_expr
+	| unop cast_expr
+	| ANDAND identifier
+	| sizeof unary_expr
+	| sizeof '(' type_id ')'
+	| alignof unary_expr
+	| alignof '(' type_id ')'
+	| new new_type_id
+	| new new_type_id new_initializer
+	| new new_placement new_type_id
+	| new new_placement new_type_id new_initializer
+	| new '(' type_id ')'
+	| new '(' type_id ')' new_initializer
+	| new new_placement '(' type_id ')'
+	| new new_placement '(' type_id ')' new_initializer
+	| delete cast_expr
+	| delete '[' ']' cast_expr
+	| delete '[' expr ']' cast_expr
+	| REALPART cast_expr
+	| IMAGPART cast_expr
+
+new_placement ::= '(' nonnull_exprlist ')'
+	| '{' nonnull_exprlist '}'
+
+new_initializer ::= '(' nonnull_exprlist ')'
+	| LEFT_RIGHT
+	| '(' typespec ')'
+	| '=' init
+
+regcast_or_absdcl ::= '(' type_id ')'
+	| regcast_or_absdcl '(' type_id ')'
+
+cast_expr ::= unary_expr
+	| regcast_or_absdcl unary_expr
+	| regcast_or_absdcl '{' initlist maybecomma '}'
+
+expr_no_commas ::= cast_expr
+	| expr_no_commas POINTSAT_STAR expr_no_commas
+	| expr_no_commas DOT_STAR expr_no_commas
+	| expr_no_commas '+' expr_no_commas
+	| expr_no_commas '-' expr_no_commas
+	| expr_no_commas '*' expr_no_commas
+	| expr_no_commas '/' expr_no_commas
+	| expr_no_commas '%' expr_no_commas
+	| expr_no_commas LSHIFT expr_no_commas
+	| expr_no_commas RSHIFT expr_no_commas
+	| expr_no_commas ARITHCOMPARE expr_no_commas
+	| expr_no_commas '<' expr_no_commas
+	| expr_no_commas '>' expr_no_commas
+	| expr_no_commas EQCOMPARE expr_no_commas
+	| expr_no_commas MIN_MAX expr_no_commas
+	| expr_no_commas '&' expr_no_commas
+	| expr_no_commas '|' expr_no_commas
+	| expr_no_commas '^' expr_no_commas
+	| expr_no_commas ANDAND expr_no_commas
+	| expr_no_commas OROR expr_no_commas
+	| expr_no_commas '?' xexpr ':' expr_no_commas
+	| expr_no_commas '=' expr_no_commas
+	| expr_no_commas ASSIGN expr_no_commas
+	| THROW
+	| THROW expr_no_commas
+
+expr_no_comma_rangle ::= cast_expr
+	| expr_no_comma_rangle POINTSAT_STAR expr_no_comma_rangle
+	| expr_no_comma_rangle DOT_STAR expr_no_comma_rangle
+	| expr_no_comma_rangle '+' expr_no_comma_rangle
+	| expr_no_comma_rangle '-' expr_no_comma_rangle
+	| expr_no_comma_rangle '*' expr_no_comma_rangle
+	| expr_no_comma_rangle '/' expr_no_comma_rangle
+	| expr_no_comma_rangle '%' expr_no_comma_rangle
+	| expr_no_comma_rangle LSHIFT expr_no_comma_rangle
+	| expr_no_comma_rangle RSHIFT expr_no_comma_rangle
+	| expr_no_comma_rangle ARITHCOMPARE expr_no_comma_rangle
+	| expr_no_comma_rangle '<' expr_no_comma_rangle
+	| expr_no_comma_rangle EQCOMPARE expr_no_comma_rangle
+	| expr_no_comma_rangle MIN_MAX expr_no_comma_rangle
+	| expr_no_comma_rangle '&' expr_no_comma_rangle
+	| expr_no_comma_rangle '|' expr_no_comma_rangle
+	| expr_no_comma_rangle '^' expr_no_comma_rangle
+	| expr_no_comma_rangle ANDAND expr_no_comma_rangle
+	| expr_no_comma_rangle OROR expr_no_comma_rangle
+	| expr_no_comma_rangle '?' xexpr ':' expr_no_comma_rangle
+	| expr_no_comma_rangle '=' expr_no_comma_rangle
+	| expr_no_comma_rangle ASSIGN expr_no_comma_rangle
+	| THROW
+	| THROW expr_no_comma_rangle
+
+notype_unqualified_id ::= '~' see_typename identifier
+	| '~' see_typename template_type
+	| template_id
+	| operator_name
+	| IDENTIFIER
+	| PTYPENAME
+	| NSNAME
+
+do_id ::= /*empty*/
+
+template_id ::= PFUNCNAME '<' do_id template_arg_list_opt template_close_bracket
+	| operator_name '<' do_id template_arg_list_opt template_close_bracket
+
+object_template_id ::= TEMPLATE identifier '<' template_arg_list_opt template_close_bracket
+	| TEMPLATE PFUNCNAME '<' template_arg_list_opt template_close_bracket
+	| TEMPLATE operator_name '<' template_arg_list_opt template_close_bracket
+
+unqualified_id ::= notype_unqualified_id
+	| tTYPENAME
+	| SELFNAME
+
+expr_or_declarator_intern ::= expr_or_declarator
+	| attributes expr_or_declarator
+
+expr_or_declarator ::= notype_unqualified_id
+	| '*' expr_or_declarator_intern
+	| '&' expr_or_declarator_intern
+	| '(' expr_or_declarator_intern ')'
+
+notype_template_declarator ::= IDENTIFIER '<' template_arg_list_opt template_close_bracket
+	| NSNAME '<' template_arg_list template_close_bracket
+
+direct_notype_declarator ::= complex_direct_notype_declarator
+	| notype_unqualified_id
+	| notype_template_declarator
+	| '(' expr_or_declarator_intern ')'
+
+primary ::= notype_unqualified_id
+	| CONSTANT
+	| boolean_literal
+	| STRING
+	| VAR_FUNC_NAME
+	| '(' expr ')'
+	| '(' expr_or_declarator_intern ')'
+	| '(' error ')'
+	| '(' compstmt_or_stmtexpr ')'
+	| notype_unqualified_id '(' nonnull_exprlist ')'
+	| notype_unqualified_id LEFT_RIGHT
+	| primary '(' nonnull_exprlist ')'
+	| primary LEFT_RIGHT
+	| VA_ARG '(' expr_no_commas ',' type_id ')'
+	| primary '[' expr ']'
+	| primary PLUSPLUS
+	| primary MINUSMINUS
+	| THIS
+	| CV_QUALIFIER '(' nonnull_exprlist ')'
+	| functional_cast
+	| DYNAMIC_CAST '<' type_id '>' '(' expr ')'
+	| STATIC_CAST '<' type_id '>' '(' expr ')'
+	| REINTERPRET_CAST '<' type_id '>' '(' expr ')'
+	| CONST_CAST '<' type_id '>' '(' expr ')'
+	| TYPEID '(' expr ')'
+	| TYPEID '(' type_id ')'
+	| global_scope IDENTIFIER
+	| global_scope template_id
+	| global_scope operator_name
+	| overqualified_id
+	| overqualified_id '(' nonnull_exprlist ')'
+	| overqualified_id LEFT_RIGHT
+	| object object_template_id
+	| object object_template_id '(' nonnull_exprlist ')'
+	| object object_template_id LEFT_RIGHT
+	| object unqualified_id
+	| object overqualified_id
+	| object unqualified_id '(' nonnull_exprlist ')'
+	| object unqualified_id LEFT_RIGHT
+	| object overqualified_id '(' nonnull_exprlist ')'
+	| object overqualified_id LEFT_RIGHT
+	| object '~' TYPESPEC LEFT_RIGHT
+	| object TYPESPEC SCOPE '~' TYPESPEC LEFT_RIGHT
+	| object error
+
+new ::= NEW
+	| global_scope NEW
+
+delete ::= DELETE
+	| global_scope delete
+
+boolean_literal ::= CXX_TRUE
+	| CXX_FALSE
+
+nodecls ::= /*empty*/
+
+object ::= primary '.'
+	| primary POINTSAT
+
+decl ::= typespec initdecls ';'
+	| typed_declspecs initdecls ';'
+	| declmods notype_initdecls ';'
+	| typed_declspecs ';'
+	| declmods ';'
+	| extension decl
+
+declarator ::= after_type_declarator
+	| notype_declarator
+
+fcast_or_absdcl ::= LEFT_RIGHT
+	| fcast_or_absdcl LEFT_RIGHT
+
+type_id ::= typed_typespecs absdcl
+	| nonempty_cv_qualifiers absdcl
+	| typespec absdcl
+	| typed_typespecs
+	| nonempty_cv_qualifiers
+
+typed_declspecs ::= typed_typespecs
+	| typed_declspecs1
+
+typed_declspecs1 ::= declmods typespec
+	| typespec reserved_declspecs
+	| typespec reserved_typespecquals reserved_declspecs
+	| declmods typespec reserved_declspecs
+	| declmods typespec reserved_typespecquals
+	| declmods typespec reserved_typespecquals reserved_declspecs
+
+reserved_declspecs ::= SCSPEC
+	| reserved_declspecs typespecqual_reserved
+	| reserved_declspecs SCSPEC
+
+declmods ::= nonempty_cv_qualifiers
+	| SCSPEC
+	| declmods CV_QUALIFIER
+	| declmods SCSPEC
+	| declmods attributes
+
+typed_typespecs ::= typespec
+	| nonempty_cv_qualifiers typespec
+	| typespec reserved_typespecquals
+	| nonempty_cv_qualifiers typespec reserved_typespecquals
+
+reserved_typespecquals ::= typespecqual_reserved
+	| reserved_typespecquals typespecqual_reserved
+	| reserved_typespecquals attributes
+	| attributes
+
+sizeof ::= SIZEOF
+
+alignof ::= ALIGNOF
+
+typeof ::= TYPEOF
+
+typespec ::= structsp
+	| TYPESPEC
+	| complete_type_name
+	| typeof '(' expr ')'
+	| typeof '(' type_id ')'
+	| SIGOF '(' expr ')'
+	| SIGOF '(' type_id ')'
+
+typespecqual_reserved ::= TYPESPEC
+	| CV_QUALIFIER
+	| structsp
+
+initdecls ::= initdcl0
+	| initdecls ',' initdcl
+
+notype_initdecls ::= notype_initdcl0
+	| notype_initdecls ',' initdcl
+
+nomods_initdecls ::= nomods_initdcl0
+	| nomods_initdecls ',' initdcl
+
+maybeasm ::= /*empty*/
+	| asm_keyword '(' STRING ')'
+
+initdcl ::= declarator maybeasm maybe_attribute '=' init
+	| declarator maybeasm maybe_attribute
+
+initdcl0_innards ::= maybe_attribute '=' init
+	| maybe_attribute
+
+initdcl0 ::= declarator maybeasm initdcl0_innards
+
+notype_initdcl0 ::= notype_declarator maybeasm initdcl0_innards
+
+nomods_initdcl0 ::= notype_declarator maybeasm initdcl0_innards
+	| constructor_declarator maybeasm maybe_attribute
+
+maybe_attribute ::= /*empty*/
+	| attributes
+
+attributes ::= attribute
+	| attributes attribute
+
+attribute ::= ATTRIBUTE '(' '(' attribute_list ')' ')'
+
+attribute_list ::= attrib
+	| attribute_list ',' attrib
+
+attrib ::= /*empty*/
+	| any_word
+	| any_word '(' IDENTIFIER ')'
+	| any_word '(' IDENTIFIER ',' nonnull_exprlist ')'
+	| any_word '(' nonnull_exprlist ')'
+
+any_word ::= identifier
+	| SCSPEC
+	| TYPESPEC
+	| CV_QUALIFIER
+
+identifiers_or_typenames ::= identifier
+	| identifiers_or_typenames ',' identifier
+
+maybe_init ::= /*empty*/
+	| '=' init
+
+init ::= expr_no_commas
+	| '{' '}'
+	| '{' initlist '}'
+	| '{' initlist ',' '}'
+	| error
+
+initlist ::= init
+	| initlist ',' init
+	| '[' expr_no_commas ']' init
+	| identifier ':' init
+	| initlist ',' identifier ':' init
+
+pending_inline ::= PRE_PARSED_FUNCTION_DECL maybe_return_init function_body
+	| PRE_PARSED_FUNCTION_DECL maybe_return_init function_try_block
+	| PRE_PARSED_FUNCTION_DECL maybe_return_init error
+
+pending_inlines ::= /*empty*/
+	| pending_inlines pending_inline eat_saved_input
+
+defarg_again ::= DEFARG_MARKER expr_no_commas END_OF_SAVED_INPUT
+	| DEFARG_MARKER error END_OF_SAVED_INPUT
+
+pending_defargs ::= /*empty*/
+	| pending_defargs defarg_again
+	| pending_defargs error
+
+structsp ::= ENUM identifier '{' enumlist_opt '}'
+	| ENUM '{' enumlist_opt '}'
+	| ENUM identifier
+	| ENUM complex_type_name
+	| TYPENAME_KEYWORD typename_sub
+	| class_head_defn maybe_base_class_list '{' opt.component_decl_list '}' maybe_attribute pending_defargs pending_inlines
+	| class_head_decl
+
+maybecomma ::= /*empty*/
+	| ','
+
+maybecomma_warn ::= /*empty*/
+	| ','
+
+aggr ::= AGGR
+	| aggr SCSPEC
+	| aggr TYPESPEC
+	| aggr CV_QUALIFIER
+	| aggr AGGR
+	| aggr attributes
+
+class_head ::= aggr identifier
+	| aggr nested_name_specifier identifier
+	| aggr global_scope nested_name_specifier identifier
+	| aggr global_scope identifier
+
+class_head_apparent_template ::= aggr apparent_template_type
+	| aggr nested_name_specifier apparent_template_type
+	| aggr global_scope nested_name_specifier apparent_template_type
+
+class_head_decl ::= class_head
+	| aggr identifier_defn
+	| class_head_apparent_template
+
+class_head_defn ::= class_head '{'
+	| class_head ':'
+	| class_head_apparent_template '{'
+	| class_head_apparent_template ':'
+	| aggr identifier_defn '{'
+	| aggr identifier_defn ':'
+	| aggr '{'
+
+maybe_base_class_list ::= /*empty*/
+	| ':' see_typename
+	| ':' see_typename base_class_list
+
+base_class_list ::= base_class
+	| base_class_list ',' see_typename base_class
+
+base_class ::= base_class_1
+	| base_class_access_list see_typename base_class_1
+
+base_class_1 ::= typename_sub
+	| nonnested_type
+
+base_class_access_list ::= VISSPEC see_typename
+	| SCSPEC see_typename
+	| base_class_access_list VISSPEC see_typename
+	| base_class_access_list SCSPEC see_typename
+
+opt.component_decl_list ::= /*empty*/
+	| component_decl_list
+	| opt.component_decl_list access_specifier component_decl_list
+	| opt.component_decl_list access_specifier
+
+access_specifier ::= VISSPEC ':'
+
+component_decl_list ::= component_decl
+	| component_decl_list component_decl
+
+component_decl ::= component_decl_1 ';'
+	| component_decl_1 '}'
+	| fn_def2 ':'
+	| fn_def2 TRY
+	| fn_def2 RETURN_KEYWORD
+	| fn_def2 '{'
+	| ';'
+	| extension component_decl
+	| template_header component_decl
+	| template_header typed_declspecs ';'
+	| bad_decl
+
+component_decl_1 ::= typed_declspecs components
+	| declmods notype_components
+	| notype_declarator maybeasm maybe_attribute maybe_init
+	| constructor_declarator maybeasm maybe_attribute maybe_init
+	| ':' expr_no_commas
+	| error
+	| declmods component_constructor_declarator maybeasm maybe_attribute maybe_init
+	| component_constructor_declarator maybeasm maybe_attribute maybe_init
+	| using_decl
+
+components ::= /*empty*/
+	| component_declarator0
+	| components ',' component_declarator
+
+notype_components ::= /*empty*/
+	| notype_component_declarator0
+	| notype_components ',' notype_component_declarator
+
+component_declarator0 ::= after_type_component_declarator0
+	| notype_component_declarator0
+
+component_declarator ::= after_type_component_declarator
+	| notype_component_declarator
+
+after_type_component_declarator0 ::= after_type_declarator maybeasm maybe_attribute maybe_init
+	| tTYPENAME ':' expr_no_commas maybe_attribute
+
+notype_component_declarator0 ::= notype_declarator maybeasm maybe_attribute maybe_init
+	| constructor_declarator maybeasm maybe_attribute maybe_init
+	| IDENTIFIER ':' expr_no_commas maybe_attribute
+	| ':' expr_no_commas maybe_attribute
+
+after_type_component_declarator ::= after_type_declarator maybeasm maybe_attribute maybe_init
+	| tTYPENAME ':' expr_no_commas maybe_attribute
+
+notype_component_declarator ::= notype_declarator maybeasm maybe_attribute maybe_init
+	| IDENTIFIER ':' expr_no_commas maybe_attribute
+	| ':' expr_no_commas maybe_attribute
+
+enumlist_opt ::= enumlist maybecomma_warn
+	| maybecomma_warn
+
+enumlist ::= enumerator
+	| enumlist ',' enumerator
+
+enumerator ::= identifier
+	| identifier '=' expr_no_commas
+
+new_type_id ::= type_specifier_seq new_declarator
+	| type_specifier_seq
+	| '(' type_id ')' '[' expr ']'
+
+cv_qualifiers ::= /*empty*/
+	| cv_qualifiers CV_QUALIFIER
+
+nonempty_cv_qualifiers ::= CV_QUALIFIER
+	| nonempty_cv_qualifiers CV_QUALIFIER
+	| attributes
+	| nonempty_cv_qualifiers attributes
+
+maybe_parmlist ::= '(' nonnull_exprlist ')'
+	| '(' parmlist ')'
+	| LEFT_RIGHT
+	| '(' error ')'
+
+after_type_declarator_intern ::= after_type_declarator
+	| attributes after_type_declarator
+
+after_type_declarator ::= '*' nonempty_cv_qualifiers after_type_declarator_intern
+	| '&' nonempty_cv_qualifiers after_type_declarator_intern
+	| '*' after_type_declarator_intern
+	| '&' after_type_declarator_intern
+	| ptr_to_mem cv_qualifiers after_type_declarator_intern
+	| direct_after_type_declarator
+
+direct_after_type_declarator ::= direct_after_type_declarator maybe_parmlist cv_qualifiers exception_specification_opt
+	| direct_after_type_declarator '[' expr ']'
+	| direct_after_type_declarator '[' ']'
+	| '(' after_type_declarator_intern ')'
+	| nested_name_specifier type_name
+	| type_name
+
+nonnested_type ::= type_name
+	| global_scope type_name
+
+complete_type_name ::= nonnested_type
+	| nested_type
+	| global_scope nested_type
+
+nested_type ::= nested_name_specifier type_name
+
+notype_declarator_intern ::= notype_declarator
+	| attributes notype_declarator
+
+notype_declarator ::= '*' nonempty_cv_qualifiers notype_declarator_intern
+	| '&' nonempty_cv_qualifiers notype_declarator_intern
+	| '*' notype_declarator_intern
+	| '&' notype_declarator_intern
+	| ptr_to_mem cv_qualifiers notype_declarator_intern
+	| direct_notype_declarator
+
+complex_notype_declarator ::= '*' nonempty_cv_qualifiers notype_declarator_intern
+	| '&' nonempty_cv_qualifiers notype_declarator_intern
+	| '*' complex_notype_declarator
+	| '&' complex_notype_declarator
+	| ptr_to_mem cv_qualifiers notype_declarator_intern
+	| complex_direct_notype_declarator
+
+complex_direct_notype_declarator ::= direct_notype_declarator maybe_parmlist cv_qualifiers exception_specification_opt
+	| '(' complex_notype_declarator ')'
+	| direct_notype_declarator '[' expr ']'
+	| direct_notype_declarator '[' ']'
+	| notype_qualified_id
+	| global_scope notype_qualified_id
+	| global_scope notype_unqualified_id
+	| nested_name_specifier notype_template_declarator
+
+qualified_id ::= nested_name_specifier unqualified_id
+	| nested_name_specifier object_template_id
+
+notype_qualified_id ::= nested_name_specifier notype_unqualified_id
+	| nested_name_specifier object_template_id
+
+overqualified_id ::= notype_qualified_id
+	| global_scope notype_qualified_id
+
+functional_cast ::= typespec '(' nonnull_exprlist ')'
+	| typespec '(' expr_or_declarator_intern ')'
+	| typespec fcast_or_absdcl
+
+type_name ::= tTYPENAME
+	| SELFNAME
+	| template_type
+
+nested_name_specifier ::= nested_name_specifier_1
+	| nested_name_specifier nested_name_specifier_1
+	| nested_name_specifier TEMPLATE explicit_template_type SCOPE
+	| nested_name_specifier IDENTIFIER SCOPE
+	| nested_name_specifier PTYPENAME SCOPE
+
+nested_name_specifier_1 ::= tTYPENAME SCOPE
+	| SELFNAME SCOPE
+	| NSNAME SCOPE
+	| template_type SCOPE
+
+typename_sub ::= typename_sub0
+	| global_scope typename_sub0
+
+typename_sub0 ::= typename_sub1 identifier
+	| typename_sub1 template_type
+	| typename_sub1 explicit_template_type
+	| typename_sub1 TEMPLATE explicit_template_type
+
+typename_sub1 ::= typename_sub2
+	| typename_sub1 typename_sub2
+	| typename_sub1 explicit_template_type SCOPE
+	| typename_sub1 TEMPLATE explicit_template_type SCOPE
+
+typename_sub2 ::= tTYPENAME SCOPE
+	| SELFNAME SCOPE
+	| template_type SCOPE
+	| PTYPENAME SCOPE
+	| IDENTIFIER SCOPE
+	| NSNAME SCOPE
+
+explicit_template_type ::= identifier '<' template_arg_list_opt template_close_bracket
+
+complex_type_name ::= global_scope type_name
+	| nested_type
+	| global_scope nested_type
+
+ptr_to_mem ::= nested_name_specifier '*'
+	| global_scope nested_name_specifier '*'
+
+global_scope ::= SCOPE
+
+new_declarator ::= '*' cv_qualifiers new_declarator
+	| '*' cv_qualifiers
+	| '&' cv_qualifiers new_declarator
+	| '&' cv_qualifiers
+	| ptr_to_mem cv_qualifiers
+	| ptr_to_mem cv_qualifiers new_declarator
+	| direct_new_declarator
+
+direct_new_declarator ::= '[' expr ']'
+	| direct_new_declarator '[' expr ']'
+
+absdcl_intern ::= absdcl
+	| attributes absdcl
+
+absdcl ::= '*' nonempty_cv_qualifiers absdcl_intern
+	| '*' absdcl_intern
+	| '*' nonempty_cv_qualifiers
+	| '*'
+	| '&' nonempty_cv_qualifiers absdcl_intern
+	| '&' absdcl_intern
+	| '&' nonempty_cv_qualifiers
+	| '&'
+	| ptr_to_mem cv_qualifiers
+	| ptr_to_mem cv_qualifiers absdcl_intern
+	| direct_abstract_declarator
+
+direct_abstract_declarator ::= '(' absdcl_intern ')'
+	| direct_abstract_declarator '(' parmlist ')' cv_qualifiers exception_specification_opt
+	| direct_abstract_declarator LEFT_RIGHT cv_qualifiers exception_specification_opt
+	| direct_abstract_declarator '[' expr ']'
+	| direct_abstract_declarator '[' ']'
+	| '(' complex_parmlist ')' cv_qualifiers exception_specification_opt
+	| regcast_or_absdcl cv_qualifiers exception_specification_opt
+	| fcast_or_absdcl cv_qualifiers exception_specification_opt
+	| '[' expr ']'
+	| '[' ']'
+
+stmts ::= stmt
+	| errstmt
+	| stmts stmt
+	| stmts errstmt
+
+errstmt ::= error ';'
+
+maybe_label_decls ::= /*empty*/
+	| label_decls
+
+label_decls ::= label_decl
+	| label_decls label_decl
+
+label_decl ::= LABEL identifiers_or_typenames ';'
+
+compstmt_or_stmtexpr ::= save_lineno '{' compstmtend
+
+compstmt ::= compstmt_or_stmtexpr
+
+simple_if ::= IF paren_cond_or_null implicitly_scoped_stmt
+
+implicitly_scoped_stmt ::= compstmt
+	| save_lineno simple_stmt
+
+stmt ::= compstmt
+	| save_lineno simple_stmt
+
+simple_stmt ::= decl
+	| expr ';'
+	| simple_if ELSE implicitly_scoped_stmt
+	| simple_if
+	| WHILE paren_cond_or_null implicitly_scoped_stmt
+	| DO implicitly_scoped_stmt WHILE paren_expr_or_null ';'
+	| FOR '(' for.init.statement xcond ';' xexpr ')' implicitly_scoped_stmt
+	| SWITCH '(' condition ')' implicitly_scoped_stmt
+	| CASE expr_no_commas ':' stmt
+	| CASE expr_no_commas ELLIPSIS expr_no_commas ':' stmt
+	| DEFAULT ':' stmt
+	| BREAK ';'
+	| CONTINUE ';'
+	| RETURN_KEYWORD ';'
+	| RETURN_KEYWORD expr ';'
+	| asm_keyword maybe_cv_qualifier '(' STRING ')' ';'
+	| asm_keyword maybe_cv_qualifier '(' STRING ':' asm_operands ')' ';'
+	| asm_keyword maybe_cv_qualifier '(' STRING ':' asm_operands ':' asm_operands ')' ';'
+	| asm_keyword maybe_cv_qualifier '(' STRING SCOPE asm_operands ')' ';'
+	| asm_keyword maybe_cv_qualifier '(' STRING ':' asm_operands ':' asm_operands ':' asm_clobbers ')' ';'
+	| asm_keyword maybe_cv_qualifier '(' STRING SCOPE asm_operands ':' asm_clobbers ')' ';'
+	| asm_keyword maybe_cv_qualifier '(' STRING ':' asm_operands SCOPE asm_clobbers ')' ';'
+	| GOTO '*' expr ';'
+	| GOTO identifier ';'
+	| label_colon stmt
+	| label_colon '}'
+	| ';'
+	| try_block
+	| using_directive
+	| namespace_using_decl
+	| namespace_alias
+
+function_try_block ::= TRY function_body handler_seq
+
+try_block ::= TRY compstmt handler_seq
+
+handler_seq ::= handler
+	| handler_seq handler
+	| /*empty*/
+
+handler ::= CATCH handler_args compstmt
+
+type_specifier_seq ::= typed_typespecs
+	| nonempty_cv_qualifiers
+
+handler_args ::= '(' ELLIPSIS ')'
+	| '(' parm ')'
+
+label_colon ::= IDENTIFIER ':'
+	| PTYPENAME ':'
+	| tTYPENAME ':'
+	| SELFNAME ':'
+
+for.init.statement ::= xexpr ';'
+	| decl
+	| '{' compstmtend
+
+maybe_cv_qualifier ::= /*empty*/
+	| CV_QUALIFIER
+
+xexpr ::= /*empty*/
+	| expr
+	| error
+
+asm_operands ::= /*empty*/
+	| nonnull_asm_operands
+
+nonnull_asm_operands ::= asm_operand
+	| nonnull_asm_operands ',' asm_operand
+
+asm_operand ::= STRING '(' expr ')'
+	| '[' identifier ']' STRING '(' expr ')'
+
+asm_clobbers ::= STRING
+	| asm_clobbers ',' STRING
+
+parmlist ::= /*empty*/
+	| complex_parmlist
+	| type_id
+
+complex_parmlist ::= parms
+	| parms_comma ELLIPSIS
+	| parms ELLIPSIS
+	| type_id ELLIPSIS
+	| ELLIPSIS
+	| parms ':'
+	| type_id ':'
+
+defarg ::= '=' defarg1
+
+defarg1 ::= DEFARG
+	| init
+
+parms ::= named_parm
+	| parm defarg
+	| parms_comma full_parm
+	| parms_comma bad_parm
+	| parms_comma bad_parm '=' init
+
+parms_comma ::= parms ','
+	| type_id ','
+
+named_parm ::= typed_declspecs1 declarator
+	| typed_typespecs declarator
+	| typespec declarator
+	| typed_declspecs1 absdcl
+	| typed_declspecs1
+	| declmods notype_declarator
+
+full_parm ::= parm
+	| parm defarg
+
+parm ::= named_parm
+	| type_id
+
+see_typename ::= /*empty*/
+
+bad_parm ::= /*empty*/
+	| notype_declarator
+
+bad_decl ::= IDENTIFIER template_arg_list_ignore IDENTIFIER arg_list_ignore ';'
+
+template_arg_list_ignore ::= '<' template_arg_list_opt template_close_bracket
+	| /*empty*/
+
+arg_list_ignore ::= '(' nonnull_exprlist ')'
+	| /*empty*/
+
+exception_specification_opt ::= /*empty*/
+	| THROW '(' ansi_raise_identifiers ')'
+	| THROW LEFT_RIGHT
+
+ansi_raise_identifier ::= type_id
+	| error
+
+ansi_raise_identifiers ::= ansi_raise_identifier
+	| ansi_raise_identifiers ',' ansi_raise_identifier
+
+conversion_declarator ::= /*empty*/
+	| '*' cv_qualifiers conversion_declarator
+	| '&' cv_qualifiers conversion_declarator
+	| ptr_to_mem cv_qualifiers conversion_declarator
+
+operator ::= OPERATOR
+
+unoperator ::= /*empty*/
+
+operator_name ::= operator '*' unoperator
+	| operator '/' unoperator
+	| operator '%' unoperator
+	| operator '+' unoperator
+	| operator '-' unoperator
+	| operator '&' unoperator
+	| operator '|' unoperator
+	| operator '^' unoperator
+	| operator '~' unoperator
+	| operator ',' unoperator
+	| operator ARITHCOMPARE unoperator
+	| operator '<' unoperator
+	| operator '>' unoperator
+	| operator EQCOMPARE unoperator
+	| operator ASSIGN unoperator
+	| operator '=' unoperator
+	| operator LSHIFT unoperator
+	| operator RSHIFT unoperator
+	| operator PLUSPLUS unoperator
+	| operator MINUSMINUS unoperator
+	| operator ANDAND unoperator
+	| operator OROR unoperator
+	| operator '!' unoperator
+	| operator '?' ':' unoperator
+	| operator MIN_MAX unoperator
+	| operator POINTSAT unoperator
+	| operator POINTSAT_STAR unoperator
+	| operator LEFT_RIGHT unoperator
+	| operator '[' ']' unoperator
+	| operator NEW unoperator
+	| operator DELETE unoperator
+	| operator NEW '[' ']' unoperator
+	| operator DELETE '[' ']' unoperator
+	| operator type_specifier_seq conversion_declarator unoperator
+	| operator error unoperator
+
+save_lineno ::= /*empty*/
+
+// Tokens
+
+//{ \("[^"]+"\),\s*RID_\([^,]+\).+
+COMPLEX ::= "_Complex"
+FUNCTION_NAME ::= "__FUNCTION__"
+PRETTY_FUNCTION_NAME ::= "__PRETTY_FUNCTION__"
+ALIGNOF ::= "__alignof"
+ALIGNOF ::= "__alignof__"
+ASM ::= "__asm"
+ASM ::= "__asm__"
+ATTRIBUTE ::= "__attribute"
+ATTRIBUTE ::= "__attribute__"
+VA_ARG ::= "__builtin_va_arg"
+COMPLEX ::= "__complex"
+COMPLEX ::= "__complex__"
+CONST ::= "__const"
+CONST ::= "__const__"
+EXTENSION ::= "__extension__"
+C99_FUNCTION_NAME ::= "__func__"
+IMAGPART ::= "__imag"
+IMAGPART ::= "__imag__"
+INLINE ::= "__inline"
+INLINE ::= "__inline__"
+LABEL ::= "__label__"
+NULL ::= "__null"
+REALPART ::= "__real"
+REALPART ::= "__real__"
+RESTRICT ::= "__restrict"
+RESTRICT ::= "__restrict__"
+SIGNED ::= "__signed"
+SIGNED ::= "__signed__"
+THREAD ::= "__thread"
+TYPEOF ::= "__typeof"
+TYPEOF ::= "__typeof__"
+VOLATILE ::= "__volatile"
+VOLATILE ::= "__volatile__"
+ASM ::= "asm"
+AUTO ::= "auto"
+BOOL ::= "bool"
+BREAK ::= "break"
+CASE ::= "case"
+CATCH ::= "catch"
+CHAR ::= "char"
+CLASS ::= "class"
+CONST ::= "const"
+CONSTCAST ::= "const_cast"
+CONTINUE ::= "continue"
+DEFAULT ::= "default"
+DELETE ::= "delete"
+DO ::= "do"
+DOUBLE ::= "double"
+DYNCAST ::= "dynamic_cast"
+ELSE ::= "else"
+ENUM ::= "enum"
+EXPLICIT ::= "explicit"
+EXPORT ::= "export"
+EXTERN ::= "extern"
+FALSE ::= "false"
+FLOAT ::= "float"
+FOR ::= "for"
+FRIEND ::= "friend"
+GOTO ::= "goto"
+IF ::= "if"
+INLINE ::= "inline"
+INT ::= "int"
+LONG ::= "long"
+MUTABLE ::= "mutable"
+NAMESPACE ::= "namespace"
+NEW ::= "new"
+OPERATOR ::= "operator"
+PRIVATE ::= "private"
+PROTECTED ::= "protected"
+PUBLIC ::= "public"
+REGISTER ::= "register"
+REINTCAST ::= "reinterpret_cast"
+RETURN ::= "return"
+SHORT ::= "short"
+SIGNED ::= "signed"
+SIZEOF ::= "sizeof"
+STATIC ::= "static"
+STATCAST ::= "static_cast"
+STRUCT ::= "struct"
+SWITCH ::= "switch"
+TEMPLATE ::= "template"
+THIS ::= "this"
+THROW ::= "throw"
+TRUE ::= "true"
+TRY ::= "try"
+TYPEDEF ::= "typedef"
+TYPENAME ::= "typename"
+TYPEID ::= "typeid"
+TYPEOF ::= "typeof"
+UNION ::= "union"
+UNSIGNED ::= "unsigned"
+USING ::= "using"
+VIRTUAL ::= "virtual"
+VOID ::= "void"
+VOLATILE ::= "volatile"
+WCHAR ::= "wchar_t"
+WHILE ::= "while"
