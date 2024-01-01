@@ -32,9 +32,9 @@ extdefs ::= lang_extdef
 extdefs_opt ::= extdefs
 	| /*empty*/
 
-.hush_warning ::= /*empty*/
+_hush_warning ::= /*empty*/
 
-.warning_ok ::= /*empty*/
+_warning_ok ::= /*empty*/
 
 extension ::= EXTENSION
 
@@ -48,8 +48,8 @@ extdef ::= fndef eat_saved_input
 	| template_def
 	| asm_keyword '(' STRING ')' ';'
 	| extern_lang_string '{' extdefs_opt '}'
-	| extern_lang_string .hush_warning fndef .warning_ok eat_saved_input
-	| extern_lang_string .hush_warning datadef .warning_ok
+	| extern_lang_string _hush_warning fndef _warning_ok eat_saved_input
+	| extern_lang_string _hush_warning datadef _warning_ok
 	| NAMESPACE identifier '{' extdefs_opt '}'
 	| NAMESPACE '{' extdefs_opt '}'
 	| namespace_alias
@@ -106,13 +106,13 @@ template_parm ::= template_type_parm
 	| template_template_parm '=' template_arg
 
 template_def ::= template_header template_extdef
-	| template_header error
+	//| template_header error
 
 template_extdef ::= fndef eat_saved_input
 	| template_datadef
 	| template_def
-	| extern_lang_string .hush_warning fndef .warning_ok eat_saved_input
-	| extern_lang_string .hush_warning template_datadef .warning_ok
+	| extern_lang_string _hush_warning fndef _warning_ok eat_saved_input
+	| extern_lang_string _hush_warning template_datadef _warning_ok
 	| extension template_extdef
 
 template_datadef ::= nomods_initdecls ';'
@@ -126,9 +126,9 @@ datadef ::= nomods_initdecls ';'
 	| declmods ';'
 	| explicit_instantiation ';'
 	| typed_declspecs ';'
-	| error ';'
-	| error '}'
-	| error END_OF_SAVED_INPUT
+	//| error ';'
+	//| error '}'
+	//| error END_OF_SAVED_INPUT
 	| ';'
 	| bad_decl
 
@@ -146,7 +146,7 @@ function_body ::= begin_function_body_ ctor_initializer_opt save_lineno '{' comp
 
 fndef ::= fn.def1 maybe_return_init function_body
 	| fn.def1 maybe_return_init function_try_block
-	| fn.def1 maybe_return_init error
+	//| fn.def1 maybe_return_init error
 
 constructor_declarator ::= nested_name_specifier SELFNAME '(' parmlist ')' cv_qualifiers exception_specification_opt
 	| nested_name_specifier SELFNAME LEFT_RIGHT cv_qualifiers exception_specification_opt
@@ -191,7 +191,7 @@ begin_function_body_ ::= /*empty*/
 member_init_list ::= /*empty*/
 	| member_init
 	| member_init_list ',' member_init
-	| member_init_list error
+	//| member_init_list error
 
 begin_member_init ::= /*empty*/
 	| notype_identifier
@@ -200,7 +200,7 @@ begin_member_init ::= /*empty*/
 
 member_init ::= begin_member_init '(' nonnull_exprlist ')'
 	| begin_member_init LEFT_RIGHT
-	| error
+	//| error
 
 identifier ::= IDENTIFIER
 	| tTYPENAME
@@ -274,20 +274,20 @@ paren_cond_or_null ::= LEFT_RIGHT
 
 xcond ::= /*empty*/
 	| condition
-	| error
+	//| error
 
 condition ::= type_specifier_seq declarator maybeasm maybe_attribute '=' init
 	| expr
 
 compstmtend ::= '}'
 	| maybe_label_decls stmts '}'
-	| maybe_label_decls stmts error '}'
-	| maybe_label_decls error '}'
+	//| maybe_label_decls stmts error '}'
+	//| maybe_label_decls error '}'
 
 nontrivial_exprlist ::= expr_no_commas ',' expr_no_commas
-	| expr_no_commas ',' error
+	//| expr_no_commas ',' error
 	| nontrivial_exprlist ',' expr_no_commas
-	| nontrivial_exprlist ',' error
+	//| nontrivial_exprlist ',' error
 
 nonnull_exprlist ::= expr_no_commas
 	| nontrivial_exprlist
@@ -427,7 +427,7 @@ primary ::= notype_unqualified_id
 	| VAR_FUNC_NAME
 	| '(' expr ')'
 	| '(' expr_or_declarator_intern ')'
-	| '(' error ')'
+	//| '(' error ')'
 	| '(' compstmt_or_stmtexpr ')'
 	| notype_unqualified_id '(' nonnull_exprlist ')'
 	| notype_unqualified_id LEFT_RIGHT
@@ -463,7 +463,7 @@ primary ::= notype_unqualified_id
 	| object overqualified_id LEFT_RIGHT
 	| object '~' TYPESPEC LEFT_RIGHT
 	| object TYPESPEC SCOPE '~' TYPESPEC LEFT_RIGHT
-	| object error
+	//| object error
 
 new ::= NEW
 	| global_scope NEW
@@ -603,7 +603,7 @@ init ::= expr_no_commas
 	| '{' '}'
 	| '{' initlist '}'
 	| '{' initlist ',' '}'
-	| error
+	//| error
 
 initlist ::= init
 	| initlist ',' init
@@ -613,17 +613,17 @@ initlist ::= init
 
 pending_inline ::= PRE_PARSED_FUNCTION_DECL maybe_return_init function_body
 	| PRE_PARSED_FUNCTION_DECL maybe_return_init function_try_block
-	| PRE_PARSED_FUNCTION_DECL maybe_return_init error
+	//| PRE_PARSED_FUNCTION_DECL maybe_return_init error
 
 pending_inlines ::= /*empty*/
 	| pending_inlines pending_inline eat_saved_input
 
 defarg_again ::= DEFARG_MARKER expr_no_commas END_OF_SAVED_INPUT
-	| DEFARG_MARKER error END_OF_SAVED_INPUT
+	//| DEFARG_MARKER error END_OF_SAVED_INPUT
 
 pending_defargs ::= /*empty*/
 	| pending_defargs defarg_again
-	| pending_defargs error
+	//| pending_defargs error
 
 structsp ::= ENUM identifier '{' enumlist_opt '}'
 	| ENUM '{' enumlist_opt '}'
@@ -712,7 +712,7 @@ component_decl_1 ::= typed_declspecs components
 	| notype_declarator maybeasm maybe_attribute maybe_init
 	| constructor_declarator maybeasm maybe_attribute maybe_init
 	| ':' expr_no_commas
-	| error
+	//| error
 	| declmods component_constructor_declarator maybeasm maybe_attribute maybe_init
 	| component_constructor_declarator maybeasm maybe_attribute maybe_init
 	| using_decl
@@ -770,7 +770,7 @@ nonempty_cv_qualifiers ::= CV_QUALIFIER
 maybe_parmlist ::= '(' nonnull_exprlist ')'
 	| '(' parmlist ')'
 	| LEFT_RIGHT
-	| '(' error ')'
+	//| '(' error ')'
 
 after_type_declarator_intern ::= after_type_declarator
 	| attributes after_type_declarator
@@ -921,11 +921,11 @@ direct_abstract_declarator ::= '(' absdcl_intern ')'
 	| '[' ']'
 
 stmts ::= stmt
-	| errstmt
+	//| errstmt
 	| stmts stmt
-	| stmts errstmt
+	//| stmts errstmt
 
-errstmt ::= error ';'
+//errstmt ::= error ';'
 
 maybe_label_decls ::= /*empty*/
 	| label_decls
@@ -1009,7 +1009,7 @@ maybe_cv_qualifier ::= /*empty*/
 
 xexpr ::= /*empty*/
 	| expr
-	| error
+	//| error
 
 asm_operands ::= /*empty*/
 	| nonnull_asm_operands
@@ -1080,7 +1080,7 @@ exception_specification_opt ::= /*empty*/
 	| THROW LEFT_RIGHT
 
 ansi_raise_identifier ::= type_id
-	| error
+	//| error
 
 ansi_raise_identifiers ::= ansi_raise_identifier
 	| ansi_raise_identifiers ',' ansi_raise_identifier
@@ -1128,7 +1128,7 @@ operator_name ::= operator '*' unoperator
 	| operator NEW '[' ']' unoperator
 	| operator DELETE '[' ']' unoperator
 	| operator type_specifier_seq conversion_declarator unoperator
-	| operator error unoperator
+	//| operator error unoperator
 
 save_lineno ::= /*empty*/
 
@@ -1140,8 +1140,8 @@ FUNCTION_NAME ::= "__FUNCTION__"
 PRETTY_FUNCTION_NAME ::= "__PRETTY_FUNCTION__"
 ALIGNOF ::= "__alignof"
 ALIGNOF ::= "__alignof__"
-ASM ::= "__asm"
-ASM ::= "__asm__"
+ASM_KEYWORD ::= "__asm"
+ASM_KEYWORD ::= "__asm__"
 ATTRIBUTE ::= "__attribute"
 ATTRIBUTE ::= "__attribute__"
 VA_ARG ::= "__builtin_va_arg"
@@ -1168,7 +1168,7 @@ TYPEOF ::= "__typeof"
 TYPEOF ::= "__typeof__"
 VOLATILE ::= "__volatile"
 VOLATILE ::= "__volatile__"
-ASM ::= "asm"
+ASM_KEYWORD ::= "asm"
 AUTO ::= "auto"
 BOOL ::= "bool"
 BREAK ::= "break"
@@ -1207,7 +1207,7 @@ PROTECTED ::= "protected"
 PUBLIC ::= "public"
 REGISTER ::= "register"
 REINTCAST ::= "reinterpret_cast"
-RETURN ::= "return"
+RETURN_KEYWORD ::= "return"
 SHORT ::= "short"
 SIGNED ::= "signed"
 SIZEOF ::= "sizeof"
@@ -1221,7 +1221,7 @@ THROW ::= "throw"
 TRUE ::= "true"
 TRY ::= "try"
 TYPEDEF ::= "typedef"
-TYPENAME ::= "typename"
+TYPENAME_KEYWORD ::= "typename"
 TYPEID ::= "typeid"
 TYPEOF ::= "typeof"
 UNION ::= "union"
@@ -1232,3 +1232,24 @@ VOID ::= "void"
 VOLATILE ::= "volatile"
 WCHAR ::= "wchar_t"
 WHILE ::= "while"
+
+DYNAMIC_CAST ::= "dynamic_cast"
+STATIC_CAST ::= "static_cast"
+REINTERPRET_CAST ::= "reinterpret_cast"
+CONST_CAST ::= "const_cast"
+CXX_TRUE ::= "true"
+CXX_FALSE ::= "false"
+
+ANDAND ::= "&&"
+DOT_STAR ::= ".*"
+LEFT_RIGHT ::= '(' ')'
+MINUSMINUS ::= "--"
+OROR ::= "||"
+PLUSPLUS ::= "++"
+POINTSAT_STAR ::= "->*"
+POINTSAT ::= "->"
+RSHIFT ::= ">>"
+LSHIFT ::= "<<"
+SCOPE ::= "::"
+ELLIPSIS ::= "..."
+
