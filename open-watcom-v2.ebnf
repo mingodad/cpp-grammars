@@ -1,0 +1,1470 @@
+//From: https://github.com/open-watcom/open-watcom-v2/blob/b7b691c0855c9262313ad3ca515f0edaeb9a531e/bld/plusplus/y/plusplus.y
+/****************************************************************************
+*
+*                            Open Watcom Project
+*
+* Copyright (c) 2002-2021 The Open Watcom Contributors. All Rights Reserved.
+*    Portions Copyright (c) 1983-2002 Sybase, Inc. All Rights Reserved.
+*
+*  ========================================================================
+*
+*    This file contains Original Code and/or Modifications of Original
+*    Code as defined in and that are subject to the Sybase Open Watcom
+*    Public License version 1.0 (the 'License'). You may not use this file
+*    except in compliance with the License. BY USING THIS FILE YOU AGREE TO
+*    ALL TERMS AND CONDITIONS OF THE LICENSE. A copy of the License is
+*    provided with the Original Code and Modifications, and is also
+*    available at www.sybase.com/developer/opensource.
+*
+*    The Original Code and all software distributed under the License are
+*    distributed on an 'AS IS' basis, WITHOUT WARRANTY OF ANY KIND, EITHER
+*    EXPRESS OR IMPLIED, AND SYBASE AND ALL CONTRIBUTORS HEREBY DISCLAIM
+*    ALL SUCH WARRANTIES, INCLUDING WITHOUT LIMITATION, ANY WARRANTIES OF
+*    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, QUIET ENJOYMENT OR
+*    NON-INFRINGEMENT. Please see the License for the specific language
+*    governing rights and limitations under the License.
+*
+*  ========================================================================
+*
+* Description:  PLUSPLUS.Y : description of C++ syntax
+
+Modified        By              Reason
+--------        --              ------
+92/10/02        Greg Bentz      Initial version, shipped as "alpha"
+                Jim Randall
+                Anthony Scian
+                Jim Welch
+
+92/10/02        A.F.Scian       changed cast-expression to use MakeNormalCast so
+                                we can distinguish programmer specified casts
+92/10/15        A.F.Scian       added new keywords __stdcall, _Syscall, _Packed,
+                                and _Seg16
+92/10/16        A.F.Scian       - added _Packed semantic actions for OS/2
+                                - added _Seg16 semantic actions for OS/2
+                                - made far16 equivalent to far for 16-bit compiler
+                                - made syscall and stdcall equivalent to cdecl
+                                  for 16-bit compiler
+92/10/22        A.F.Scian       instead of parsing one global declaration at a
+                                time and accepting the tokens, parse all of the
+                                global declarations before accepting
+92/10/23        A.F.Scian       made interrupt a flag instead of a calling convention
+92/10/28        A.F.Scian       used direct access to standard calling conventions
+92/10/29        A.F.Scian       - treat exception decls just like arguments
+                                - corrected throw to have an optional expr
+92/12/01        A.F.Scian       added better error messages for missing ';'
+92/12/04        A.F.Scian       added optional size expression for delete []
+93/01/07        A.F.Scian       changed precedence of :> operator to just less
+                                than a cast
+93/01/27        A.F.Scian       added support for '::'<template-name>
+93/01/31        A.F.Scian       removed kludge to define class template symbols
+93/02/08        A.F.Scian       fixed problem with "struct T<x>" followed by id
+93/02/09        A.F.Scian       added calls to zapTemplateClassDeclSpec
+                                (see YYDRIVER.C for explanation)
+93/03/11        J.W.Welch       New messaging
+93/03/16        A.F.Scian       streamlined member-declarator to directly call
+                                DeclNoInit instead of going through DataInitNoInit
+93/03/29        A.F.Scian       added semantics for "new (int [x+1])" 5.3.3
+                                "The first array dimension can be a general
+                                 integral expression even when <type-id> is used"
+93/04/20        A.F.Scian       added rules for y_template_scoped_typename to
+                                handle nested types inside of templates
+93/04/21        A.F.Scian       fixed actions for function-declaration to not
+                                pop the GS_DECL_SPEC stack until the function
+                                body is processed (this allows any linkage on
+                                the function symbol to be retained for the
+                                entire processing of the function body)
+93/07/13        A.F.Scian       - added more than one pointer declarator to
+                                  conversion function ids
+                                - fixed concatenation of strings so that the
+                                  type of the result is correct
+93/07/29        A.F.Scian       it was impossible to tell the difference between
+                                no parms and ( void ) (both had parms == NULL)
+                                so code now calls AddExplicitParms which handles
+                                the problem by setting a bit in the DECL_INFO
+93/08/11        A.F.Scian       allow multiple ;'s in member decl lists
+                                e.g., struct S { int a;;;; void foo(){};;; };
+93/12/01        A.F.Scian       added %ambig directives supported by new YACC
+93/12/15        A.F.Scian       added operator new []/operator delete [] support
+94/03/23        A.F.Scian       set up so that class S<int>; doesn't define the
+                                class
+94/04/18        A.F.Scian       added support for "class __export __stdcall X"
+94/04/19        A.F.Scian       push some calls to FreeDeclInfo into functions
+                                that are called before
+94/06/08        A.F.Scian       improved error message location for missing ';'
+                                error messages
+94/10/14        A.F.Scian       added __declspec( <id> )
+94/10/18        A.F.Scian       added kludge to support:
+                                typedef struct S { } S, const *CPS;
+                                                        ^^^^^- accept this
+94/10/25        A.F.Scian       upgrade LHS of assignment-expr so that it
+                                accepts casts and pm-exprs
+94/11/02        A.F.Scian       added support for "class __declspec(dllimport) X"
+94/12/07        A.F.Scian       added Y_GLOBAL_ID as a valid declarator-id so
+                                struct S { friend int ::foo( int ); }; works
+95/02/23        A.F.Scian       added __builtin_isfloat( <type-id> ) construct
+95/04/28        A.F.Scian       added __unaligned modifier
+95/05/16        A.F.Scian       added class template directives
+95/06/28        A.F.Scian       added more general offsetof field expressions
+96/01/10        A.F.Scian       adjusted syntax of __unaligned to match 'const'
+                                rather than 'far'
+96/02/12        A.F.Scian       added support for __declspec( pragma-modifier )
+96/02/26        A.F.Scian       added some namespace syntax
+96/03/19        A.F.Scian       adjusted ++@/--@ grammar as per ISO C++ mtg in
+                                Santa Cruz, CA resolutions
+96/05/07        A.F.Scian       added "using namespace X;"
+96/06/07        A.F.Scian       added support for multiple ids in __declspec()
+96/07/02        A.F.Scian       added sizeof <type-name>
+96/07/25        A.F.Scian       accept unsigned <type-name> : 1; as a bitfield
+96/10/28        A.F.Scian       fixed 96/07/25 so that <type-name> : 1; still works
+*/
+
+goal-symbol ::=
+	Y_EXPRESSION_SPECIAL expression
+	| Y_EXPRESSION_SPECIAL type-specifier-seq declaring-declarator initializer
+	| Y_EXPR_DECL_SPECIAL expr-decl-stmt
+	| Y_FUNCTION_DECL_SPECIAL decl-specifier-seq declarator
+	| Y_FUNCTION_DECL_SPECIAL declarator
+	| Y_FUNCTION_DECL_SPECIAL decl-specifier-seq ctor-declarator
+	| might-restart-declarations
+	| Y_EXCEPTION_SPECIAL exception-declaration
+	| Y_MEM_INIT_SPECIAL mem-initializer-list Y_LEFT_BRACE
+	| Y_DEFARG_SPECIAL assignment-expression Y_DEFARG_END
+	| Y_TEMPLATE_INT_DEFARG_SPECIAL logical-or-expression Y_DEFARG_END
+	| Y_TEMPLATE_TYPE_DEFARG_SPECIAL expect-type-id type-id Y_DEFARG_END
+	| Y_CLASS_INST_SPECIAL class-specifier
+	| Y_RIGHT_BRACE
+	| /*empty*/
+
+expect-string-literal ::=
+	/*empty*/
+
+expect-identifier ::=
+	/*empty*/
+
+expect-id-expression ::=
+	/*empty*/
+
+expect-type-name ::=
+	/*empty*/
+
+expect-type-id ::=
+	/*empty*/
+
+expect-qualified-namespace-specifier ::=
+	/*empty*/
+
+lt-special-init ::=
+	/*empty*/
+
+lt-special ::=
+	lt-special-init Y_LT
+
+expr-decl-stmt ::=
+	expression-before-semicolon Y_SEMI_COLON
+	| local-declaration
+
+expression-before-semicolon ::=
+	expression
+
+access-declaration ::=
+	qualified-id
+	| qualified-type-specifier
+	| Y_SCOPED_UNKNOWN_ID
+	| nested-name-specifier Y_TEMPLATE_SCOPED_UNKNOWN_ID
+
+identifier ::=
+	Y_ID
+	| Y_UNKNOWN_ID
+	| Y_TEMPLATE_ID
+
+literal ::=
+	Y_CONSTANT
+	| string-literal
+	| boolean-literal
+	| pointer-literal
+
+string-literal ::=
+	Y_STRING
+	| string-literal Y_STRING
+
+boolean-literal ::=
+	Y_TRUE
+	| Y_FALSE
+
+pointer-literal ::=
+	Y_NULLPTR
+
+primary-expression ::=
+	literal
+	| Y_THIS
+	| Y_LEFT_PAREN expression Y_RIGHT_PAREN
+	| id-expression
+
+id-expression ::=
+	unqualified-id
+	| qualified-id
+
+unqualified-id ::=
+	identifier
+	| operator-function-id
+	| conversion-function-id
+	| Y_TILDE expect-type-name Y_TYPE_NAME
+	| Y_TILDE expect-type-name Y_UNKNOWN_ID
+	| Y_TILDE expect-type-name template-type
+	| template-id
+
+qualified-id ::=
+	nested-name-specifier template-scoped-unqualified-id
+	| Y_GLOBAL_ID
+	| Y_GLOBAL_TEMPLATE_ID
+	| Y_SCOPED_ID
+	| Y_SCOPED_TEMPLATE_ID
+	| scoped-operator-function-id
+	| scoped-conversion-function-id
+	| scoped-template-id
+	| pseudo-destructor-name
+
+nested-name-specifier ::=
+	template-type
+	| scoped-template-type
+	| template-type scoped-nested-name-specifier
+	| scoped-template-type scoped-nested-name-specifier
+
+scoped-nested-name-specifier ::=
+	template-scoped-template-type
+	| template-scoped-template-type scoped-nested-name-specifier
+
+template-scoped-unqualified-id ::=
+	Y_TEMPLATE_SCOPED_ID
+	| Y_TEMPLATE_SCOPED_TEMPLATE_ID
+	| Y_TEMPLATE_SCOPED_TEMPLATE_ID lt-special template-argument-list-opt Y_GT_SPECIAL
+	| Y_TEMPLATE_SCOPED_TEMPLATE_NAME lt-special template-argument-list-opt Y_GT_SPECIAL
+	| template-scoped-operator-function-id
+	| template-scoped-conversion-function-id
+
+postfix-expression ::=
+	primary-expression
+	| postfix-expression Y_LEFT_BRACKET expression Y_RIGHT_BRACKET
+	| postfix-expression Y_LEFT_PAREN expression-list-opt Y_RIGHT_PAREN
+	| simple-type-specifier Y_LEFT_PAREN expression-list-opt Y_RIGHT_PAREN
+	| typename-specifier Y_LEFT_PAREN expression-list-opt Y_RIGHT_PAREN
+	| postfix-expression-before-dot Y_DOT expect-id-expression id-expression
+	| postfix-expression-before-arrow Y_ARROW expect-id-expression id-expression
+	| postfix-expression Y_PLUS_PLUS
+	| postfix-expression Y_MINUS_MINUS
+	| Y_DYNAMIC_CAST lt-special expect-type-id type-id Y_GT_SPECIAL Y_LEFT_PAREN expression Y_RIGHT_PAREN
+	| Y_STATIC_CAST lt-special expect-type-id type-id Y_GT_SPECIAL Y_LEFT_PAREN expression Y_RIGHT_PAREN
+	| Y_REINTERPRET_CAST lt-special expect-type-id type-id Y_GT_SPECIAL Y_LEFT_PAREN expression Y_RIGHT_PAREN
+	| Y_CONST_CAST lt-special expect-type-id type-id Y_GT_SPECIAL Y_LEFT_PAREN expression Y_RIGHT_PAREN
+	| Y_TYPEID Y_LEFT_PAREN expression Y_RIGHT_PAREN
+	| Y_TYPEID Y_LEFT_PAREN type-id Y_RIGHT_PAREN
+	| Y___SEGNAME Y_LEFT_PAREN expect-string-literal string-literal Y_RIGHT_PAREN
+
+postfix-expression-before-dot ::=
+	postfix-expression
+
+postfix-expression-before-arrow ::=
+	postfix-expression
+
+expression-list-opt ::=
+	/*empty*/
+	| expression-list
+
+expression-list ::=
+	assignment-expression
+	| expression-list Y_COMMA assignment-expression
+
+pseudo-destructor-name ::=
+	Y_SCOPED_TILDE expect-type-name identifier
+	| Y_SCOPED_TILDE expect-type-name Y_TYPE_NAME
+	| nested-name-specifier Y_TEMPLATE_SCOPED_TILDE expect-type-name Y_ID
+	| nested-name-specifier Y_TEMPLATE_SCOPED_TILDE expect-type-name Y_UNKNOWN_ID
+	| nested-name-specifier Y_TEMPLATE_SCOPED_TILDE expect-type-name Y_TEMPLATE_NAME
+	| nested-name-specifier Y_TEMPLATE_SCOPED_TILDE expect-type-name Y_TYPE_NAME
+
+unary-expression ::=
+	postfix-expression
+	| Y_PLUS_PLUS cast-expression
+	| Y_MINUS_MINUS cast-expression
+	| unary-operator cast-expression
+	| Y_SIZEOF unary-expression
+	| Y_SIZEOF Y_LEFT_PAREN type-id Y_RIGHT_PAREN
+	| new-expression
+	| delete-expression
+	| Y_SIZEOF Y_TYPE_NAME
+	| Y___BUILTIN_ISFLOAT Y_LEFT_PAREN expect-type-id type-id Y_RIGHT_PAREN
+	| Y___OFFSETOF Y_LEFT_PAREN expect-type-id type-id Y_COMMA offsetof-field Y_RIGHT_PAREN
+
+unary-operator ::=
+	Y_TIMES
+	| Y_AND
+	| Y_PLUS
+	| Y_MINUS
+	| Y_EXCLAMATION
+	| Y_TILDE
+
+new-expression ::=
+	new-keyword new-modifier-opt new-placement new-type-id new-initializer-opt
+	| new-keyword new-modifier-opt new-type-id new-initializer-opt
+	| new-keyword new-modifier-opt new-placement Y_LEFT_PAREN special-new-type-id Y_RIGHT_PAREN new-initializer-opt
+	| new-keyword new-modifier-opt Y_LEFT_PAREN special-new-type-id Y_RIGHT_PAREN new-initializer-opt
+
+new-keyword ::=
+	Y_NEW
+	| Y_GLOBAL_NEW
+
+new-modifier-opt ::=
+	/*empty*/
+	| modifier
+
+new-placement ::=
+	Y_LEFT_PAREN expression-list Y_RIGHT_PAREN
+
+new-type-id ::=
+	dynamic-type-id
+	| Y_LEFT_PAREN special-new-type-id Y_RIGHT_PAREN
+
+new-initializer-opt ::=
+	/*empty*/
+	| new-initializer
+
+new-initializer ::=
+	Y_LEFT_PAREN Y_RIGHT_PAREN
+	| Y_LEFT_PAREN expression-list Y_RIGHT_PAREN
+
+dynamic-type-id ::=
+	type-specifier-seq
+	| type-specifier-seq new-declarator
+
+new-declarator ::=
+	partial-ptr-declarator direct-new-declarator
+	| partial-ptr-declarator
+	| direct-new-declarator
+
+delete-expression ::=
+	delete-keyword cast-expression
+	| delete-keyword Y_LEFT_BRACKET delete-size-expression-opt Y_RIGHT_BRACKET cast-expression
+
+delete-keyword ::=
+	Y_DELETE
+	| Y_GLOBAL_DELETE
+
+delete-size-expression-opt ::=
+	/*empty*/
+	| expression
+
+cast-expression ::=
+	unary-expression
+	| Y_LEFT_PAREN type-id Y_RIGHT_PAREN cast-expression
+
+segment-expression ::=
+	cast-expression
+	| segment-expression Y_SEG_OP cast-expression
+
+pm-expression ::=
+	segment-expression
+	| pm-expression Y_DOT_STAR segment-expression
+	| pm-expression Y_ARROW_STAR segment-expression
+
+multiplicative-expression ::=
+	pm-expression
+	| multiplicative-expression Y_TIMES pm-expression
+	| multiplicative-expression Y_DIV pm-expression
+	| multiplicative-expression Y_PERCENT pm-expression
+
+additive-expression ::=
+	multiplicative-expression
+	| additive-expression Y_PLUS multiplicative-expression
+	| additive-expression Y_MINUS multiplicative-expression
+
+shift-expression ::=
+	additive-expression
+	| shift-expression Y_RSHIFT additive-expression
+	| shift-expression Y_LSHIFT additive-expression
+
+relational-expression ::=
+	shift-expression
+	| relational-expression Y_LT shift-expression
+	| relational-expression Y_LE shift-expression
+	| relational-expression Y_GT shift-expression
+	| relational-expression Y_GE shift-expression
+
+equality-expression ::=
+	relational-expression
+	| equality-expression Y_EQ relational-expression
+	| equality-expression Y_NE relational-expression
+
+and-expression ::=
+	equality-expression
+	| and-expression Y_AND equality-expression
+
+exclusive-or-expression ::=
+	and-expression
+	| exclusive-or-expression Y_XOR and-expression
+
+inclusive-or-expression ::=
+	exclusive-or-expression
+	| inclusive-or-expression Y_OR exclusive-or-expression
+
+logical-and-expression ::=
+	inclusive-or-expression
+	| logical-and-expression Y_AND_AND inclusive-or-expression
+
+logical-or-expression ::=
+	logical-and-expression
+	| logical-or-expression Y_OR_OR logical-and-expression
+
+conditional-expression ::=
+	logical-or-expression
+	| logical-or-expression Y_QUESTION expression Y_COLON assignment-expression
+
+assignment-expression ::=
+	conditional-expression
+	| logical-or-expression assignment-operator assignment-expression
+	| Y_THROW assignment-expression-opt
+
+assignment-expression-opt ::=
+	/*empty*/
+	| assignment-expression
+
+assignment-operator ::=
+	Y_EQUAL
+	| Y_TIMES_EQUAL
+	| Y_DIV_EQUAL
+	| Y_PERCENT_EQUAL
+	| Y_PLUS_EQUAL
+	| Y_MINUS_EQUAL
+	| Y_LSHIFT_EQUAL
+	| Y_RSHIFT_EQUAL
+	| Y_OR_EQUAL
+	| Y_AND_EQUAL
+	| Y_XOR_EQUAL
+
+expression ::=
+	assignment-expression
+	| expression Y_COMMA assignment-expression
+
+constant-expression ::=
+	conditional-expression
+
+offsetof-field ::=
+	make-id
+	| make-id offsetof-index
+	| offsetof-field Y_DOT make-id
+	| offsetof-field Y_DOT make-id offsetof-index
+
+offsetof-index ::=
+	Y_LEFT_BRACKET constant-expression Y_RIGHT_BRACKET
+	| offsetof-index Y_LEFT_BRACKET constant-expression Y_RIGHT_BRACKET
+
+partial-ptr-declarator ::=
+	Y_TIMES cv-qualifier-seq-opt partial-ptr-declarator
+	| Y_TIMES cv-qualifier-seq-opt
+	| Y_SCOPED_TIMES cv-qualifier-seq-opt partial-ptr-declarator
+	| Y_SCOPED_TIMES cv-qualifier-seq-opt
+	| nested-name-specifier Y_TEMPLATE_SCOPED_TIMES cv-qualifier-seq-opt partial-ptr-declarator
+	| nested-name-specifier Y_TEMPLATE_SCOPED_TIMES cv-qualifier-seq-opt
+
+direct-new-declarator ::=
+	Y_LEFT_BRACKET expression Y_RIGHT_BRACKET
+	| direct-new-declarator Y_LEFT_BRACKET constant-expression Y_RIGHT_BRACKET
+
+make-id ::=
+	Y_ID
+	| Y_UNKNOWN_ID
+	| Y_TEMPLATE_ID
+	| Y_TYPE_NAME
+	| Y_TEMPLATE_NAME
+	| Y_NAMESPACE_NAME
+
+declaration-seq ::=
+	declaration
+	| declaration-seq declaration
+
+declaration ::=
+	block-declaration-before-semicolon Y_SEMI_COLON
+	| function-definition
+	| template-declaration
+	| explicit-instantiation
+	| linkage-specification
+	| namespace-definition
+	| Y_SEMI_COLON
+
+block-declaration-before-semicolon ::=
+	block-declaration
+
+block-declaration ::=
+	simple-declaration
+	| asm-definition
+	| namespace-alias-definition
+	| using-declaration
+	| using-directive
+	| static_assert-declaration
+
+simple-declaration ::=
+	decl-specifier-seq init-declarator-list
+	| no-declarator-declaration
+
+static_assert-declaration ::=
+	Y_STATIC_ASSERT Y_LEFT_PAREN constant-expression Y_COMMA expect-string-literal string-literal Y_RIGHT_PAREN
+
+decl-specifier-seq ::=
+	non-type-decl-specifier-seq type-specifier maybe-type-decl-specifier-seq
+	| non-type-decl-specifier-seq type-specifier
+	| type-specifier maybe-type-decl-specifier-seq
+	| type-specifier
+	| non-type-decl-specifier-seq
+
+non-type-decl-specifier-seq ::=
+	non-type-decl-specifier
+	| non-type-decl-specifier-seq non-type-decl-specifier
+
+maybe-type-decl-specifier-seq ::=
+	non-type-decl-specifier
+	| basic-type-specifier
+	| maybe-type-decl-specifier-seq non-type-decl-specifier
+	| maybe-type-decl-specifier-seq basic-type-specifier
+
+non-type-decl-specifier ::=
+	storage-class-specifier
+	| function-specifier
+	| cv-qualifier
+	| ms-specific-declspec
+	| Y_FRIEND
+
+ms-specific-declspec ::=
+	Y___DECLSPEC Y_LEFT_PAREN Y_RIGHT_PAREN
+	| Y___DECLSPEC Y_LEFT_PAREN ms-declspec-seq Y_RIGHT_PAREN
+
+ms-declspec-seq ::=
+	make-id
+	| pragma-modifier
+	| ms-declspec-seq make-id
+	| ms-declspec-seq pragma-modifier
+
+storage-class-specifier ::=
+	Y_AUTO
+	| Y_REGISTER
+	| Y_STATIC
+	| Y_EXTERN
+	| Y_MUTABLE
+	| Y_EXTERN linkage-id
+	| Y_TYPEDEF
+
+function-specifier ::=
+	Y_INLINE
+	| Y_VIRTUAL
+	| Y_EXPLICIT
+	| Y___INLINE
+
+type-specifier ::=
+	simple-type-specifier
+	| class-specifier
+	| enum-specifier
+	| elaborated-type-specifier
+	| typename-specifier
+
+simple-type-specifier ::=
+	Y_TYPE_NAME
+	| qualified-type-specifier
+	| basic-type-specifier
+	| decltype-specifier
+	| typeof-specifier
+
+decltype-specifier ::=
+	Y_DECLTYPE Y_LEFT_PAREN id-expression Y_RIGHT_PAREN
+	| Y_DECLTYPE Y_LEFT_PAREN expression Y_RIGHT_PAREN
+
+qualified-type-specifier ::=
+	Y_GLOBAL_TYPE_NAME
+	| Y_SCOPED_TYPE_NAME
+	| nested-name-specifier
+	| nested-name-specifier Y_TEMPLATE_SCOPED_TYPE_NAME
+
+enum-specifier ::=
+	enum-key enum-start enumerator-list Y_COMMA Y_RIGHT_BRACE
+	| enum-key enum-start enumerator-list Y_RIGHT_BRACE
+	| enum-key enum-start Y_RIGHT_BRACE
+
+enum-start ::=
+	Y_LEFT_BRACE
+
+enum-key ::=
+	Y_ENUM make-id
+	| Y_ENUM
+
+enumerator-list ::=
+	enumerator-definition
+	| enumerator-list Y_COMMA enumerator-definition
+
+enumerator-definition ::=
+	enumerator
+	| enumerator Y_EQUAL constant-expression
+
+enumerator ::=
+	make-id
+
+elaborated-type-specifier ::=
+	Y_ENUM make-id
+	| Y_ENUM elaborated-type-name
+
+namespace-definition ::=
+	namespace-key Y_LEFT_BRACE namespace-body Y_RIGHT_BRACE
+
+namespace-key ::=
+	Y_NAMESPACE
+	| Y_NAMESPACE expect-identifier make-id
+
+namespace-body ::=
+	/*empty*/
+	| might-restart-declarations
+
+namespace-alias-definition ::=
+	Y_NAMESPACE expect-identifier make-id Y_EQUAL expect-qualified-namespace-specifier qualified-namespace-specifier
+
+qualified-namespace-specifier ::=
+	Y_NAMESPACE_NAME
+	| Y_GLOBAL_NAMESPACE_NAME
+	| Y_SCOPED_NAMESPACE_NAME
+
+using-declaration ::=
+	Y_USING qualified-id
+	| Y_USING qualified-type-specifier
+	| Y_USING Y_GLOBAL_TEMPLATE_NAME
+	| Y_USING Y_SCOPED_TEMPLATE_NAME
+	| Y_USING qualified-namespace-specifier
+
+using-directive ::=
+	Y_USING Y_NAMESPACE expect-qualified-namespace-specifier qualified-namespace-specifier
+
+asm-definition ::=
+	Y_ASM Y_LEFT_PAREN expect-string-literal string-literal Y_RIGHT_PAREN
+
+linkage-specification ::=
+	Y_EXTERN linkage-id start-linkage-block linkage-body Y_RIGHT_BRACE
+
+linkage-id ::=
+	string-literal
+
+start-linkage-block ::=
+	Y_LEFT_BRACE
+
+linkage-body ::=
+	/*empty*/
+	| might-restart-declarations
+
+init-declarator-list ::=
+	init-declarator
+	| init-declarator-list Y_COMMA comma-init-declarator
+
+init-declarator ::=
+	declarator
+	| declaring-declarator initializer
+	| ptr-mod-init-declarator
+	| direct-declarator Y_LEFT_PAREN expression-list Y_RIGHT_PAREN
+
+declarator ::=
+	ptr-mod-declarator
+	| direct-declarator
+
+comma-init-declarator ::=
+	comma-declarator
+	| comma-declaring-declarator initializer
+	| cv-qualifier-seq-opt ptr-mod-init-declarator
+	| cv-qualifier-seq-opt direct-declarator Y_LEFT_PAREN expression-list Y_RIGHT_PAREN
+
+declaring-declarator ::=
+	declarator
+
+comma-declaring-declarator ::=
+	comma-declarator
+
+comma-declarator ::=
+	cv-qualifier-seq-opt ptr-mod-declarator
+	| cv-qualifier-seq-opt direct-declarator
+
+ptr-mod ::=
+	modifier
+	| Y___BASED Y_LEFT_PAREN based-expression Y_RIGHT_PAREN
+	| pragma-modifier
+	| ptr-operator
+
+ptr-mod-init-declarator ::=
+	ptr-mod ptr-mod-init-declarator
+	| ptr-mod direct-declarator Y_LEFT_PAREN expression-list Y_RIGHT_PAREN
+
+ptr-mod-declarator ::=
+	ptr-mod ptr-mod-declarator
+	| ptr-mod direct-declarator
+
+direct-declarator ::=
+	declarator-id
+	| direct-declarator Y_LEFT_PAREN parameter-declaration-clause Y_RIGHT_PAREN cv-qualifier-seq-opt exception-specification-opt
+	| direct-declarator Y_LEFT_BRACKET constant-expression Y_RIGHT_BRACKET
+	| direct-declarator Y_LEFT_BRACKET Y_RIGHT_BRACKET
+	| Y_LEFT_PAREN ptr-mod-declarator Y_RIGHT_PAREN
+	| Y_LEFT_PAREN direct-declarator Y_RIGHT_PAREN
+
+modifier ::=
+	Y___NEAR
+	| Y___FAR
+	| Y__FAR16
+	| Y___FAR16
+	| Y___HUGE
+	| Y__EXPORT
+	| Y___EXPORT
+	| Y___LOADDS
+	| Y___SAVEREGS
+	| Y___INTERRUPT
+
+based-expression ::=
+	segment-cast-opt Y___SEGNAME Y_LEFT_PAREN expect-string-literal string-literal Y_RIGHT_PAREN
+	| segment-cast-opt identifier
+	| segment-cast-opt Y_VOID
+	| segment-cast-opt Y___SELF
+
+segment-cast-opt ::=
+	/*empty*/
+	| Y_LEFT_PAREN Y___SEGMENT Y_RIGHT_PAREN
+
+pragma-modifier ::=
+	Y___PRAGMA Y_LEFT_PAREN pragma-id Y_RIGHT_PAREN
+	| Y__CDECL
+	| Y___CDECL
+	| Y__FASTCALL
+	| Y___FASTCALL
+	| Y___FORTRAN
+	| Y__OPTLINK
+	| Y__PASCAL
+	| Y___PASCAL
+	| Y___STDCALL
+	| Y__SYSCALL
+	| Y___SYSCALL
+	| Y__SYSTEM
+	| Y___WATCALL
+
+pragma-id ::=
+	string-literal
+
+ptr-operator ::=
+	Y_TIMES cv-qualifier-seq-opt
+	| Y_AND cv-qualifier-seq-opt
+	| Y_SCOPED_TIMES cv-qualifier-seq-opt
+	| nested-name-specifier Y_TEMPLATE_SCOPED_TIMES cv-qualifier-seq-opt
+	| Y_TIMES Y__SEG16 cv-qualifier-seq-opt
+
+cv-qualifier-seq-opt ::=
+	/*empty*/
+	| Y_CONST
+	| Y_VOLATILE
+	| Y___UNALIGNED
+	| Y_CONST Y_VOLATILE
+	| Y_VOLATILE Y_CONST
+	| Y_CONST Y___UNALIGNED
+	| Y___UNALIGNED Y_CONST
+	| Y_VOLATILE Y___UNALIGNED
+	| Y___UNALIGNED Y_VOLATILE
+	| Y___UNALIGNED Y_CONST Y_VOLATILE
+	| Y___UNALIGNED Y_VOLATILE Y_CONST
+	| Y_VOLATILE Y_CONST Y___UNALIGNED
+	| Y_VOLATILE Y___UNALIGNED Y_CONST
+	| Y_CONST Y_VOLATILE Y___UNALIGNED
+	| Y_CONST Y___UNALIGNED Y_VOLATILE
+
+declarator-id ::=
+	id-expression
+	| Y_TEMPLATE_NAME
+	| Y_NAMESPACE_NAME
+	| Y_TYPE_NAME
+	| Y_GLOBAL_UNKNOWN_ID
+	| Y_SCOPED_UNKNOWN_ID
+	| nested-name-specifier Y_TEMPLATE_SCOPED_UNKNOWN_ID
+	| Y_TEMPLATE_SCOPED_ID
+	| Y_TEMPLATE_SCOPED_UNKNOWN_ID
+	| Y_TEMPLATE_SCOPED_TILDE make-id
+	| template-scoped-conversion-function-id
+	| template-scoped-operator-function-id
+
+type-id ::=
+	type-specifier-seq abstract-declarator
+	| type-specifier-seq
+
+type-specifier-seq ::=
+	decl-specifier-seq
+
+abstract-declarator ::=
+	abstract-ptr-mod-declarator
+	| direct-abstract-declarator
+
+abstract-ptr-mod-declarator ::=
+	ptr-mod abstract-ptr-mod-declarator
+	| ptr-mod direct-abstract-declarator
+	| ptr-mod
+
+direct-abstract-declarator ::=
+	direct-abstract-declarator Y_LEFT_PAREN parameter-declaration-clause Y_RIGHT_PAREN cv-qualifier-seq-opt exception-specification-opt
+	| Y_LEFT_PAREN parameter-declaration-clause Y_RIGHT_PAREN cv-qualifier-seq-opt exception-specification-opt
+	| direct-abstract-declarator Y_LEFT_BRACKET constant-expression Y_RIGHT_BRACKET
+	| Y_LEFT_BRACKET constant-expression Y_RIGHT_BRACKET
+	| direct-abstract-declarator Y_LEFT_BRACKET Y_RIGHT_BRACKET
+	| Y_LEFT_BRACKET Y_RIGHT_BRACKET
+	| Y_LEFT_PAREN direct-abstract-declarator Y_RIGHT_PAREN
+	| Y_LEFT_PAREN abstract-ptr-mod-declarator Y_RIGHT_PAREN
+
+parameter-declaration-clause ::=
+	/*empty*/
+	| parameter-declaration-list
+	| parameter-declaration-list Y_COMMA Y_DOT_DOT_DOT
+	| parameter-declaration-list Y_DOT_DOT_DOT
+	| Y_DOT_DOT_DOT
+
+parameter-declaration-list ::=
+	parameter-declaration
+	| parameter-declaration-list Y_COMMA parameter-declaration
+
+arg-decl-specifier-seq ::=
+	decl-specifier-seq
+
+parameter-declaration ::=
+	simple-parameter-declaration
+
+simple-parameter-declaration ::=
+	arg-decl-specifier-seq
+	| arg-decl-specifier-seq simple-arg-no-id defarg-parse-or-copy
+	| arg-decl-specifier-seq declarator
+	| arg-decl-specifier-seq declarator defarg-parse-or-copy
+	| arg-decl-specifier-seq abstract-declarator
+	| arg-decl-specifier-seq abstract-declarator defarg-parse-or-copy
+
+simple-arg-no-id ::=
+	/*empty*/
+
+defarg-parse-or-copy ::=
+	defarg-check Y_EQUAL assignment-expression
+	| defarg-check Y_DEFARG_GONE_SPECIAL
+
+type-defarg-parse-or-copy ::=
+	defarg-check Y_EQUAL type-id
+	| defarg-check Y_DEFARG_GONE_SPECIAL
+
+defarg-check ::=
+	/*empty*/
+
+ctor-declarator ::=
+	Y_LEFT_PAREN parameter-declaration-clause Y_RIGHT_PAREN cv-qualifier-seq-opt exception-specification-opt
+
+function-declaration ::=
+	decl-specifier-seq declarator ctor-initializer
+	| decl-specifier-seq declarator
+	| declarator ctor-initializer
+	| declarator
+	| decl-specifier-seq ctor-declarator ctor-initializer
+	| decl-specifier-seq ctor-declarator
+
+function-definition ::=
+	function-declaration function-body
+
+function-body ::=
+	check-for-rewrite Y_LEFT_BRACE absorb-body Y_RIGHT_BRACE
+
+check-for-rewrite ::=
+	/*empty*/
+
+absorb-body ::=
+	/*empty*/
+
+initializer ::=
+	init-start assignment-expression
+	| init-start braced-initializer
+
+init-start ::=
+	Y_EQUAL
+
+initializer-list ::=
+	assignment-expression
+	| initializer-list Y_COMMA assignment-expression
+	| braced-initializer
+	| initializer-list Y_COMMA braced-initializer
+
+start-class ::=
+	/*empty*/
+
+invalid-class-name-id ::=
+	Y_GLOBAL_UNKNOWN_ID
+	| Y_SCOPED_UNKNOWN_ID
+
+class-name-id ::=
+	Y_ID
+	| Y_UNKNOWN_ID
+	| Y_TEMPLATE_ID
+	| Y_TYPE_NAME
+	| Y_TEMPLATE_NAME
+	| Y_NAMESPACE_NAME
+	| Y_GLOBAL_ID
+	| Y_GLOBAL_TYPE_NAME
+	| Y_SCOPED_ID
+	| Y_SCOPED_TYPE_NAME
+	| invalid-class-name-id
+
+class-name ::=
+	class-name-id
+	| nested-name-specifier
+
+class-specifier ::=
+	class-key class-name
+	| class-key class-name base-clause class-body
+	| class-key class-name class-body
+	| class-key no-class-name base-clause class-body
+	| class-key no-class-name class-body
+
+class-key ::=
+	packed-class-opt Y_CLASS class-mod-opt
+	| packed-class-opt Y_STRUCT class-mod-opt
+	| packed-class-opt Y_UNION class-mod-opt
+
+class-body ::=
+	class-substance Y_RIGHT_BRACE
+
+class-substance ::=
+	start-class Y_LEFT_BRACE member-specification-opt
+
+no-class-name ::=
+	/*empty*/
+
+packed-class-opt ::=
+	/*empty*/
+	| Y__PACKED
+
+class-mod-opt ::=
+	/*empty*/
+	| class-mod-seq
+
+class-mod ::=
+	pragma-modifier
+	| modifier
+	| ms-specific-declspec
+
+class-mod-seq ::=
+	class-mod
+	| class-mod-seq class-mod
+
+member-specification-opt ::=
+	/*empty*/
+	| member-specification
+
+member-specification ::=
+	member-specification-opt member-declaration
+	| member-specification-opt access-specifier Y_COLON
+
+member-declaration ::=
+	simple-member-declaration-before-semicolon Y_SEMI_COLON
+	| function-definition
+	| access-declaration Y_SEMI_COLON
+	| static_assert-declaration Y_SEMI_COLON
+	| template-declaration
+	| Y_SEMI_COLON
+
+simple-member-declaration-before-semicolon ::=
+	simple-member-declaration
+
+simple-member-declaration ::=
+	decl-specifier-seq member-declarator-list
+	| member-declarator-list
+	| decl-specifier-seq
+	| decl-specifier-seq ctor-declarator
+	| using-declaration
+
+member-declarator-list ::=
+	member-declarator
+	| member-declarator-list Y_COMMA member-declarator
+
+member-declarator ::=
+	member-declaring-declarator constant-initializer
+	| member-declaring-declarator Y_PURE_FUNCTION_SPECIAL Y_CONSTANT
+	| member-declaring-declarator
+	| Y_COLON constant-expression
+	| declarator-id Y_COLON constant-expression
+
+member-declaring-declarator ::=
+	declarator
+
+constant-initializer ::=
+	Y_EQUAL constant-expression
+
+base-clause ::=
+	Y_COLON base-specifier-list
+
+base-specifier-list ::=
+	base-specifier
+	| base-specifier-list Y_COMMA base-specifier
+
+base-specifier ::=
+	base-qualifiers-opt qualified-class-specifier
+
+base-qualifiers-opt ::=
+	/*empty*/
+	| base-qualifiers-opt Y_PRIVATE
+	| base-qualifiers-opt Y_PUBLIC
+	| base-qualifiers-opt Y_PROTECTED
+	| base-qualifiers-opt Y_VIRTUAL
+
+access-specifier ::=
+	Y_PRIVATE
+	| Y_PROTECTED
+	| Y_PUBLIC
+
+conversion-function-id ::=
+	Y_OPERATOR conversion-type-id
+
+scoped-conversion-function-id ::=
+	Y_SCOPED_OPERATOR conversion-type-id
+	| Y_GLOBAL_OPERATOR conversion-type-id
+
+template-scoped-conversion-function-id ::=
+	Y_TEMPLATE_SCOPED_OPERATOR conversion-type-id
+
+conversion-type-id ::=
+	type-specifier-seq
+	| type-specifier-seq conversion-declarator
+
+conversion-declarator ::=
+	ptr-operator
+	| ptr-operator conversion-declarator
+
+ctor-initializer ::=
+	Y_COLON
+
+mem-initializer-list ::=
+	mem-initializer
+	| mem-initializer-list Y_COMMA mem-initializer
+
+mem-initializer ::=
+	qualified-class-specifier Y_LEFT_PAREN expression-list-opt Y_RIGHT_PAREN
+	| identifier Y_LEFT_PAREN expression-list-opt Y_RIGHT_PAREN
+
+qualified-class-specifier ::=
+	qualified-class-type
+
+qualified-class-type ::=
+	Y_TYPE_NAME
+	| Y_GLOBAL_TYPE_NAME
+	| Y_SCOPED_TYPE_NAME
+	| nested-name-specifier
+	| nested-name-specifier Y_TEMPLATE_SCOPED_TYPE_NAME
+
+operator-function-id ::=
+	Y_OPERATOR operator
+
+scoped-operator-function-id ::=
+	Y_SCOPED_OPERATOR operator
+	| Y_GLOBAL_OPERATOR operator
+
+template-scoped-operator-function-id ::=
+	Y_TEMPLATE_SCOPED_OPERATOR operator
+
+operator ::=
+	Y_NEW
+	| Y_DELETE
+	| Y_NEW Y_LEFT_BRACKET Y_RIGHT_BRACKET
+	| Y_DELETE Y_LEFT_BRACKET Y_RIGHT_BRACKET
+	| Y_PLUS
+	| Y_MINUS
+	| Y_TIMES
+	| Y_DIV
+	| Y_PERCENT
+	| Y_XOR
+	| Y_AND
+	| Y_OR
+	| Y_TILDE
+	| Y_EXCLAMATION
+	| Y_EQUAL
+	| Y_TIMES_EQUAL
+	| Y_DIV_EQUAL
+	| Y_PERCENT_EQUAL
+	| Y_PLUS_EQUAL
+	| Y_MINUS_EQUAL
+	| Y_LSHIFT_EQUAL
+	| Y_RSHIFT_EQUAL
+	| Y_OR_EQUAL
+	| Y_AND_EQUAL
+	| Y_XOR_EQUAL
+	| Y_LSHIFT
+	| Y_RSHIFT
+	| Y_EQ
+	| Y_NE
+	| Y_LE
+	| Y_GE
+	| Y_LT
+	| Y_GT
+	| Y_AND_AND
+	| Y_OR_OR
+	| Y_PLUS_PLUS
+	| Y_MINUS_MINUS
+	| Y_COMMA
+	| Y_ARROW_STAR
+	| Y_ARROW
+	| Y_LEFT_PAREN Y_RIGHT_PAREN
+	| Y_LEFT_BRACKET Y_RIGHT_BRACKET
+	| Y_SEG_OP
+
+template-declaration ::=
+	template-declaration-before-semicolon Y_SEMI_COLON
+	| template-function-declaration
+
+template-declaration-start ::=
+	template-key template-declaration-init lt-special template-parameter-list-opt Y_GT_SPECIAL
+
+simple-template-declaration-before-semicolon ::=
+	block-declaration-before-semicolon
+	| simple-member-declaration-before-semicolon
+
+template-declaration-before-semicolon ::=
+	template-declaration-start simple-template-declaration-before-semicolon
+	| Y_EXPORT template-declaration-start simple-template-declaration-before-semicolon
+
+template-function-declaration ::=
+	template-declaration-start function-definition
+	| Y_EXPORT template-declaration-start function-definition
+
+template-declaration-init ::=
+	/*empty*/
+
+template-parameter-list-opt ::=
+	/*empty*/
+	| template-parameter-list
+
+template-parameter-list ::=
+	template-parameter
+	| template-parameter-list Y_COMMA template-parameter
+
+template-parameter ::=
+	type-parameter
+	| parameter-declaration
+
+type-parameter ::=
+	type-parameter-no-defarg
+	| type-parameter-no-defarg type-defarg-parse-or-copy
+
+type-parameter-no-defarg ::=
+	template-typename-key
+	| template-typename-key make-id
+
+template-typename-key ::=
+	Y_TYPENAME
+	| Y_CLASS
+
+template-id ::=
+	Y_TEMPLATE_ID lt-special template-argument-list-opt Y_GT_SPECIAL
+
+scoped-template-id ::=
+	Y_SCOPED_TEMPLATE_ID lt-special template-argument-list-opt Y_GT_SPECIAL
+	| Y_GLOBAL_TEMPLATE_ID lt-special template-argument-list-opt Y_GT_SPECIAL
+
+template-argument-list ::=
+	template-argument
+	| template-argument-list Y_COMMA template-argument
+
+template-argument ::=
+	assignment-expression
+	| type-id
+
+typename-specifier ::=
+	typename-special nested-name-specifier Y_TEMPLATE_SCOPED_TYPE_NAME
+	| typename-special nested-name-specifier
+	| typename-special Y_SCOPED_TYPE_NAME
+
+explicit-instantiation-special ::=
+	Y_TEMPLATE
+	| Y_EXTERN Y_TEMPLATE
+
+explicit-instantiation ::=
+	Y_EXTERN Y_TEMPLATE template-class-directive-extern Y_SEMI_COLON
+	| Y_TEMPLATE template-class-directive-instantiate Y_SEMI_COLON
+	| explicit-instantiation-special block-declaration-before-semicolon Y_SEMI_COLON
+
+template-key ::=
+	Y_TEMPLATE
+
+template-argument-list-opt ::=
+	/*empty*/
+	| template-argument-list
+
+template-class-directive-extern ::=
+	nested-name-specifier
+
+template-class-directive-instantiate ::=
+	nested-name-specifier
+
+template-type ::=
+	template-type-instantiation Y_GT_SPECIAL
+
+template-type-instantiation ::=
+	Y_TEMPLATE_NAME lt-special template-argument-list-opt
+
+scoped-template-type ::=
+	scoped-template-type-instantiation Y_GT_SPECIAL
+
+scoped-template-type-instantiation ::=
+	Y_SCOPED_TEMPLATE_NAME lt-special template-argument-list-opt
+	| Y_GLOBAL_TEMPLATE_NAME lt-special template-argument-list-opt
+
+template-scoped-template-type ::=
+	template-scoped-template-type-instantiation Y_GT_SPECIAL
+
+template-scoped-template-type-instantiation ::=
+	Y_TEMPLATE_SCOPED_TEMPLATE_NAME lt-special template-argument-list-opt
+
+exception-declaration ::=
+	actual-exception-declaration
+
+actual-exception-declaration ::=
+	type-specifier-seq declarator
+	| type-specifier-seq abstract-declarator
+	| type-specifier-seq
+
+exception-specification-opt ::=
+	/*empty*/
+	| exception-specification
+
+exception-specification ::=
+	Y_THROW Y_LEFT_PAREN type-id-list Y_RIGHT_PAREN
+	| Y_THROW Y_LEFT_PAREN Y_RIGHT_PAREN
+
+type-id-list ::=
+	expect-type-id type-id
+	| type-id-list Y_COMMA expect-type-id type-id
+
+might-restart-declarations ::=
+	start-restart-declarations
+	| start-restart-declarations declaration-seq
+
+start-restart-declarations ::=
+	/*empty*/
+
+local-declaration ::=
+	block-declaration-before-semicolon Y_SEMI_COLON
+
+no-declarator-declaration ::=
+	decl-specifier-seq
+
+typeof-specifier ::=
+	Y___TYPEOF Y_LEFT_PAREN expression Y_RIGHT_PAREN
+	| Y___TYPEOF Y_LEFT_PAREN type-id Y_RIGHT_PAREN
+
+cv-qualifier ::=
+	Y_CONST
+	| Y_VOLATILE
+	| Y___UNALIGNED
+
+basic-type-specifier ::=
+	Y_CHAR
+	| Y_WCHAR_T
+	| Y_BOOL
+	| Y_SHORT
+	| Y_INT
+	| Y_LONG
+	| Y_SIGNED
+	| Y_UNSIGNED
+	| Y_FLOAT
+	| Y_DOUBLE
+	| Y_VOID
+	| Y___SEGMENT
+	| Y___INT8
+	| Y___INT16
+	| Y___INT32
+	| Y___INT64
+
+elaborated-type-name ::=
+	Y_GLOBAL_ID
+	| Y_GLOBAL_TEMPLATE_ID
+	| Y_GLOBAL_TYPE_NAME
+	| Y_SCOPED_ID
+	| Y_SCOPED_TEMPLATE_ID
+	| Y_SCOPED_TYPE_NAME
+
+braced-initializer ::=
+	brace-start initializer-list Y_COMMA Y_RIGHT_BRACE
+	| brace-start initializer-list Y_RIGHT_BRACE
+
+brace-start ::=
+	Y_LEFT_BRACE
+
+typename-special ::=
+	typename-special-init Y_TYPENAME
+
+typename-special-init ::=
+	/*empty*/
+
+special-new-type-id ::=
+	type-specifier-seq special-new-abstract-declarator
+	| type-specifier-seq
+
+special-new-abstract-declarator ::=
+	special-new-abstract-ptr-mod-declarator
+	| special-new-direct-abstract-declarator
+
+special-new-abstract-ptr-mod-declarator ::=
+	ptr-mod special-new-abstract-ptr-mod-declarator
+	| ptr-mod special-new-direct-abstract-declarator
+	| ptr-mod
+
+special-new-direct-abstract-declarator ::=
+	special-new-direct-abstract-declarator Y_LEFT_PAREN parameter-declaration-clause Y_RIGHT_PAREN cv-qualifier-seq-opt exception-specification-opt
+	| Y_LEFT_PAREN parameter-declaration-clause Y_RIGHT_PAREN cv-qualifier-seq-opt exception-specification-opt
+	| special-new-direct-abstract-declarator Y_LEFT_BRACKET constant-expression Y_RIGHT_BRACKET
+	| Y_LEFT_BRACKET expression Y_RIGHT_BRACKET
+	| special-new-direct-abstract-declarator Y_LEFT_BRACKET Y_RIGHT_BRACKET
+	| Y_LEFT_BRACKET Y_RIGHT_BRACKET
+	| Y_LEFT_PAREN special-new-direct-abstract-declarator Y_RIGHT_PAREN
+	| Y_LEFT_PAREN special-new-abstract-ptr-mod-declarator Y_RIGHT_PAREN
+
+//Lexer
+
+Y_QUESTION ::= '?'
+Y_DOT ::= '.'
+Y_COLON ::= ':'
+Y_SEMI_COLON ::= ';'
+Y_LEFT_BRACKET ::= '['
+Y_RIGHT_BRACKET ::= ']'
+Y_LEFT_PAREN ::= '('
+Y_RIGHT_PAREN ::= ')'
+Y_LEFT_BRACE ::= '{'
+Y_RIGHT_BRACE ::= '}'
+Y_DOT_DOT_DOT ::= "..."
+
+Y_CHAR ::= "char"
+Y_WCHAR_T ::= "wchar_t"
+Y_BOOL ::= "bool"
+Y_SHORT ::= "short"
+Y_INT ::= "int"
+Y_LONG ::= "long"
+Y_SIGNED ::= "signed"
+Y_UNSIGNED ::= "unsigned"
+Y_FLOAT ::= "float"
+Y_DOUBLE ::= "double"
+Y_VOID ::= "void"
+Y___SEGMENT ::= "__segment"
+Y___INT8 ::= "__int8"
+Y___INT16 ::= "__int16"
+Y___INT32 ::= "__int32"
+Y___INT64 ::= "__int64"
+
+Y___NEAR ::= "___near"
+Y___FAR ::= "___far"
+Y__FAR16 ::= "__far16"
+Y___FAR16 ::= "___far16"
+Y___HUGE ::= "huge"
+Y__EXPORT ::= "__export"
+Y___EXPORT ::= "___export"
+Y___LOADDS ::= "___loadds"
+Y___SAVEREGS ::= "___saveregs"
+Y___INTERRUPT ::= "___interrupt"
+Y___SEGNAME ::= "___segname"
+Y___SELF ::= "___self"
+Y__SEG16 ::= "__seg16"
+
+Y___PRAGMA ::= "___pragma"
+Y__CDECL ::= "__cdecl"
+Y___CDECL ::= "___cdecl"
+Y__FASTCALL ::= "__fastcall"
+Y___FASTCALL ::= "___fastcall"
+Y___FORTRAN ::= "___fortran"
+Y__OPTLINK ::= "__optlink"
+Y__PASCAL ::= "__pascal"
+Y___PASCAL ::= "___pascal"
+Y___STDCALL ::= "___stdcall"
+Y__SYSCALL ::= "__syscall"
+Y___SYSCALL ::= "___syscall"
+Y__SYSTEM ::= "__system"
+Y___WATCALL ::= "___watcall"
+
+Y_CONST ::= "const"
+Y_VOLATILE ::= "volatile"
+Y___UNALIGNED ::= "__unaligned"
+Y__PACKED ::= "__packed"
+
+Y___TYPEOF ::= "__typeof"
+Y___OFFSETOF ::= "__offsetof"
+Y___DECLSPEC ::= "__declspec"
+Y_DECLTYPE ::= "decltype"
+
+Y_INLINE ::= "inline"
+Y_EXPLICIT ::= "explicit"
+Y___INLINE ::= "__inline"
+Y_EXTERN ::= "extern"
+Y_NAMESPACE ::= "namespace"
+Y_THROW ::= "throw"
+Y_TEMPLATE ::= "template"
+Y_TYPENAME ::= "typename"
+Y_CLASS ::= "class"
+Y_EXPORT ::= "export"
+Y___BASED ::= "__based"
+Y_OPERATOR ::= "operator"
+Y_PRIVATE ::= "private"
+Y_PUBLIC ::= "public"
+Y_PROTECTED ::= "protected"
+Y_VIRTUAL ::= "virtual"
+Y_FRIEND ::= "friend"
+Y_STRUCT ::= "struct"
+Y_UNION ::= "union"
+Y_ENUM ::= "enum"
+Y_ASM ::= "asm"
+Y_USING ::= "using"
+Y_SIZEOF ::= "sizeof"
+Y_AUTO ::= "auto"
+Y_REGISTER ::= "register"
+Y_STATIC ::= "static"
+Y_MUTABLE ::= "mutable"
+Y_TYPEDEF ::= "typedef"
+Y_TRUE ::= "true"
+Y_FALSE ::= "false"
+Y_NULLPTR ::= "nullptr"
+Y_THIS ::= "this"
+ Y_DYNAMIC_CAST ::= "dynamic_cast"
+ Y_STATIC_CAST ::= "static_cast"
+ Y_REINTERPRET_CAST ::= "reinterpret_cast"
+ Y_CONST_CAST ::= "const_cast"
+ Y_STATIC_ASSERT ::= "static_assert"
+
+Y_NEW ::= "new"
+Y_GLOBAL_NEW ::= "::new"
+Y_GLOBAL_DELETE ::= "::delete"
+Y_DELETE ::= "delete"
+Y_PLUS ::= "+"
+Y_MINUS ::= "-"
+Y_TIMES ::= "*"
+Y_DIV ::= "/"
+Y_PERCENT ::= "%"
+Y_XOR ::= "^"
+Y_AND ::= "&"
+Y_OR ::= "|"
+Y_TILDE ::= "~"
+Y_EXCLAMATION ::= "!"
+Y_EQUAL ::= "="
+Y_TIMES_EQUAL ::= "*="
+Y_DIV_EQUAL ::= "/="
+Y_PERCENT_EQUAL ::= "%="
+Y_PLUS_EQUAL ::= "+="
+Y_MINUS_EQUAL ::= "-="
+Y_LSHIFT_EQUAL ::= "<<="
+Y_RSHIFT_EQUAL ::= ">>="
+Y_OR_EQUAL ::= "|="
+Y_AND_EQUAL ::= "&="
+Y_XOR_EQUAL ::= "^="
+Y_LSHIFT ::= "<<"
+Y_RSHIFT ::= ">>"
+Y_EQ ::= "=="
+Y_NE ::= "!="
+Y_LE ::= "<="
+Y_GE ::= ">="
+Y_LT ::= "<"
+Y_GT ::= ">"
+Y_AND_AND ::= "&&"
+Y_OR_OR ::= "||"
+Y_PLUS_PLUS ::= "++"
+Y_MINUS_MINUS ::= "--"
+Y_COMMA ::= ','
+Y_ARROW_STAR ::= "->*"
+Y_ARROW ::= "->"
+Y_DOT_STAR ::= ".*"
+//Y_SEG_OP
