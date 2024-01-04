@@ -1,0 +1,920 @@
+//From: https://github.com/satya-das/cppparser/blob/f9a4cfac1a3af7286332056d7c661d86b6c35eb3/src/parser.y
+/*
+   The MIT License (MIT)
+
+   Copyright (c) 2018 Satya Das
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy of
+   this software and associated documentation files (the "Software"), to deal in
+   the Software without restriction, including without limitation the rights to
+   use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+   the Software, and to permit persons to whom the Software is furnished to do so,
+   subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+   FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+//EBNF to create railroad diagram
+
+
+progunit ::= optstmtlist
+
+optstmtlist ::=
+            | stmtlist
+
+stmtlist ::= stmt
+         | stmtlist stmt
+         | optstmtlist changeprotlevel
+
+stmt ::= vardeclstmt
+     | vardeclliststmt
+     | enumdefnstmt
+     | enumfwddecl
+     | typedefnamestmt
+     | typedefliststmt
+     | classdefnstmt
+     | namespacedefn
+     | fwddecl
+     | doccomment
+     | exprstmt
+     | ifblock
+     | whileblock
+     | dowhileblock
+     | forblock
+     | forrangeblock
+     | funcpointerdecl
+     | funcdeclstmt
+     | funcdefn
+     | ctordeclstmt
+     | ctordefn
+     | dtordeclstmt
+     | dtordefn
+     | typeconverterstmt
+     | externcblock
+     | funcptrtypedef
+     | preprocessor
+     | block
+     | switchstmt
+     | tryblock
+     | usingdecl
+     | usingnamespacedecl
+     | namespacealias
+     | macrocall
+     | macrocall ';'
+     | apidecortokensq macrocall
+     | ';'
+     | asmblock
+     | blob
+     | label
+
+label ::= name ':'
+
+preprocessor ::= define
+             | undef
+             | include
+             | import
+             | hashif
+             | hasherror
+             | hashwarning
+             | pragma
+
+asmblock ::= tknAsm
+
+
+macrocall ::= tknMacro
+
+
+macrocall ::= macrocall '(' ')'
+
+
+macrocall ::= macrocall '(' expr ')'
+
+switchstmt ::= tknSwitch '(' expr ')' '{' caselist '}'
+
+caselist ::=
+         | caselist tknCase expr ':' optstmtlist
+         | caselist tknDefault ':' optstmtlist
+         | doccommentstr caselist
+         | caselist doccommentstr
+
+block ::= '{' optstmtlist '}'
+      | doccomment block
+
+ifblock ::= tknIf '(' expr ')' stmt
+        | tknIf '(' varinit ')' stmt
+        | ifblock tknElse stmt
+
+whileblock ::= tknWhile '(' expr ')' stmt
+           | tknWhile '(' varinit ')' stmt
+
+dowhileblock ::= tknDo stmt tknWhile '(' expr ')'
+
+forblock ::= tknFor '(' optexpr ';' optexpr ';' optexpr ')' stmt
+         | tknFor '(' varinit ';' optexpr ';' optexpr ')' stmt
+         | tknFor '(' vardecllist ';' optexpr ';' optexpr ')' stmt
+
+forrangeblock ::= tknFor '(' vardecl ':' expr ')' stmt
+
+tryblock ::= tknTry block catchblock
+         | tryblock catchblock
+
+catchblock ::= tknCatch '(' vartype optname ')' block
+
+optexpr ::=
+        | expr
+        | exprlist
+
+define ::= tknPreProHash tknDefine name name
+       | tknPreProHash tknDefine name
+       | tknPreProHash tknDefine name tknNumber
+       | tknPreProHash tknDefine name tknStrLit
+       | tknPreProHash tknDefine name tknCharLit
+       | tknPreProHash tknDefine name tknPreProDef
+
+undef ::= tknPreProHash tknUndef name
+
+include ::= tknPreProHash tknInclude tknStrLit
+        | tknPreProHash tknInclude tknStdHdrInclude
+
+import ::= tknPreProHash tknImport tknStrLit
+       | tknPreProHash tknImport tknStdHdrInclude
+
+hashif ::= tknPreProHash tknIf tknPreProDef
+       | tknPreProHash tknIfDef name
+       | tknPreProHash tknIfNDef name
+       | tknPreProHash tknIfNDef tknApiDecor
+       | tknPreProHash tknElse
+       | tknPreProHash tknElIf tknPreProDef
+       | tknPreProHash tknEndIf
+
+hasherror ::= tknPreProHash tknHashError
+          | tknPreProHash tknHashError strlit
+
+hashwarning ::= tknPreProHash tknHashWarning
+            | tknPreProHash tknHashWarning strlit
+
+pragma ::= tknPreProHash tknPragma tknPreProDef
+
+doccomment ::= doccommentstr
+
+doccommentstr ::= tknFreeStandingBlockComment
+              | tknFreeStandingLineComment
+              | doccommentstr tknFreeStandingBlockComment
+              | doccommentstr tknFreeStandingLineComment
+
+
+identifier ::= name
+
+
+identifier ::= identifier tknScopeResOp identifier
+
+
+identifier ::= id
+
+
+identifier ::= templidentifier
+
+
+identifier ::= tknOverride
+
+
+identifier ::= identifier tknEllipsis
+
+
+identifier ::= macrocall
+
+
+identifier ::= templqualifiedid
+
+numbertype ::= tknInteger
+           | tknFloat
+           | tknDouble
+           | tknChar
+           | tknNumSignSpec
+           | tknNumSignSpec numbertype
+
+typeidentifier ::= identifier
+               | tknScopeResOp identifier
+               | typeidentifier tknScopeResOp typeidentifier
+               | numbertype
+               | tknAuto
+               | tknVoid
+               | tknEnum identifier
+               | tknTypename identifier
+               | tknEllipsis
+               | tknTypename tknEllipsis
+               | tknClass tknEllipsis
+               | typeidentifier tknEllipsis
+               | tknDecltype '(' expr ')'
+
+
+templidentifier ::= identifier tknLT templatearglist tknGT
+
+
+templidentifier ::= identifier tknLT expr tknNotEq expr tknGT
+
+
+templidentifier ::= identifier tknLT templatearglist ',' expr tknNotEq expr tknGT
+
+
+templqualifiedid ::= tknTemplate templidentifier
+
+
+name ::= tknName
+
+
+id ::= tknID
+
+optname ::=
+        | name
+
+optidentifier ::=
+              | identifier
+
+enumitem ::= name
+         | name '=' expr
+         | doccomment
+         | preprocessor
+         | macrocall
+         | blob
+
+blob ::= tknBlob
+
+enumitemlist ::=
+             | enumitemlist enumitem
+             | enumitemlist ',' enumitem
+             | enumitemlist ','
+
+enumdefn ::= tknEnum optname '{' enumitemlist '}'
+         | tknEnum optapidecor name ':' typeidentifier '{' enumitemlist '}'
+         | tknEnum ':' typeidentifier '{' enumitemlist '}'
+         | tknEnum optapidecor name '{' enumitemlist '}'
+         | tknEnum tknClass optapidecor name ':' typeidentifier '{' enumitemlist '}'
+         | tknEnum tknClass optapidecor name '{' enumitemlist '}'
+         | tknTypedef tknEnum optapidecor optname '{' enumitemlist '}' name
+
+enumdefnstmt ::= enumdefn ';'
+
+enumfwddecl ::= tknEnum name ':' typeidentifier ';'
+            | tknEnum tknClass name ':' typeidentifier ';'
+            | tknEnum tknClass name ';'
+
+funcptrtypedef ::= tknTypedef functionpointer ';'
+
+typedefnamestmt ::= typedefname ';'
+
+typedefliststmt ::= typedeflist ';'
+
+typedeflist ::= tknTypedef vardecllist
+
+typedefname ::= tknTypedef vardecl
+
+usingdecl ::= tknUsing name '=' vartype ';'
+          | tknUsing name '=' functionptrtype ';'
+          | tknUsing name '=' funcobj ';'
+          | tknUsing name '=' classdefn ';'
+          | templatespecifier usingdecl
+          | tknUsing identifier ';'
+
+namespacealias ::= tknNamespace name '=' identifier ';'
+
+usingnamespacedecl ::= tknUsing tknNamespace identifier ';'
+
+vardeclliststmt ::= vardecllist ';'
+                | exptype vardecllist ';'
+
+vardeclstmt ::= vardecl ';'
+            | varinit ';'
+            | apidecor vardeclstmt
+            | exptype vardeclstmt
+            | varattrib vardeclstmt
+
+vardecllist ::= optfunctype varinit ',' opttypemodifier name optvarassign
+            | optfunctype vardecl ',' opttypemodifier name optvarassign
+            | optfunctype vardecl ',' opttypemodifier name '[' expr ']'
+            | optfunctype vardecl ',' opttypemodifier name ':' expr
+            | vardecllist ',' opttypemodifier name optvarassign
+            | vardecllist ',' opttypemodifier name optvarassign ':' expr
+
+varinit ::= vardecl '(' typeidentifier '*' name
+        | vardecl '(' typeidentifier '*' '*' name
+        | vardecl '(' typeidentifier '*' '&' name
+        | vardecl '(' typeidentifier '&' name
+        | vardecl '(' typeidentifier tknAnd name
+        | vardecl '(' typeidentifier ')'
+        | vardecl '(' ')'
+        | vardecl varassign
+        | tknConstExpr varinit
+
+varassign ::= '=' expr
+          | '(' exprorlist ')'
+          | '{' funcargs '}'
+
+optvarassign ::=
+             | varassign
+
+vardecl ::= vartype varidentifier
+        | vartype apidecor varidentifier
+        | functionpointer
+        | vardecl '[' expr ']'
+        | vardecl '[' ']'
+        | vardecl ':' expr
+        | templatespecifier vardecl
+        | varattrib vardecl
+
+vartype ::= attribspecifiers typeidentifier opttypemodifier
+        | typeidentifier opttypemodifier
+        | tknClass identifier opttypemodifier
+        | tknClass optapidecor identifier opttypemodifier
+        | tknStruct optapidecor identifier opttypemodifier
+        | tknUnion identifier opttypemodifier
+        | functionptrtype
+        | classdefn
+        | classdefn typemodifier
+        | enumdefn
+        | enumdefn typemodifier
+        | varattrib vartype
+        | vartype tknEllipsis
+        | typeidentifier typeidentifier tknScopeResOp typemodifier
+
+varidentifier ::= identifier
+              | tknFinal
+              | '(' '&' name ')'
+              | '(' '*' name ')'
+              | '(' '*' '*' name ')'
+
+opttypemodifier ::=
+                | typemodifier
+                | doccomment opttypemodifier
+
+typemodifier ::= tknConst
+             | '*'
+             | '&'
+             | tknAnd
+             | typemodifier tknConst
+             | typemodifier '*'
+             | typemodifier '&'
+             | typemodifier tknAnd
+
+exptype ::= tknStatic
+        | tknExtern
+        | tknExternC
+
+varattrib ::= tknConst
+          | tknVolatile
+          | tknMutable
+          | tknConstExpr
+
+typeconverter ::= tknOperator vartype '(' optvoid ')'
+              | identifier tknScopeResOp tknOperator vartype '(' optvoid ')'
+              | functype typeconverter
+              | typeconverter tknConst
+              | apidecor typeconverter
+              | templatespecifier typeconverter
+
+typeconverterstmt ::= typeconverter ';'
+                  | typeconverter block
+
+funcdeclstmt ::= funcdecl ';'
+
+funcdefn ::= funcdecl block
+
+lambda ::= '[' lambdacapture ']' lambdaparams block
+       | '[' lambdacapture ']' lambdaparams tknArrow vartype block
+
+lambdaparams ::=
+             | '(' paramlist ')'
+
+funcptrortype ::= functype vartype '(' optapidecor identifier tknScopeResOp '*' optname ')' '(' paramlist ')'
+              | vartype '(' optapidecor identifier tknScopeResOp '*' optname ')' '(' paramlist ')'
+              | functype vartype '(' optapidecor '*' optname ')' '(' paramlist ')'
+              | vartype '(' optapidecor '*' optname ')' '(' paramlist ')'
+              | vartype '(' '*' apidecor optname ')' '(' paramlist ')'
+              | apidecor funcptrortype
+              | funcptrortype optfuncattrib
+
+functionpointer ::= funcptrortype
+
+functionptrtype ::= funcptrortype
+
+funcobj ::= vartype optapidecor '(' paramlist ')'
+
+funcpointerdecl ::= functionpointer ';'
+
+funcdecldata ::= funcname '(' paramlist ')'
+             | funcname '(' paramlist ')' optfuncattrib
+
+funcdecl ::= vartype apidecor funcdecldata
+         | vartype funcdecldata
+         | vartype tknConstExpr funcdecldata
+         | tknAuto funcdecldata tknArrow vartype
+         | tknAuto tknConstExpr funcdecldata tknArrow vartype
+         | tknConstExpr funcdecl
+         | apidecor funcdecl
+         | templatespecifier funcdecl
+         | functype funcdecl
+         | funcdecl '=' tknDelete
+         | funcdecl '=' tknDefault
+         | funcdecl functhrowspec
+
+funcobjstr ::= typeidentifier optapidecor '(' paramlist ')'
+
+funcname ::= operfuncname
+         | typeidentifier
+         | tknScopeResOp operfuncname
+         | tknFinal
+
+rshift ::= tknGT tknGT
+
+operfuncname ::= tknOperator '+'
+             | tknOperator '-'
+             | tknOperator '*'
+             | tknOperator '/'
+             | tknOperator '%'
+             | tknOperator '^'
+             | tknOperator '&'
+             | tknOperator '|'
+             | tknOperator '~'
+             | tknOperator '!'
+             | tknOperator '='
+             | tknOperator tknLT
+             | tknOperator tknGT
+             | tknOperator tknPlusEq
+             | tknOperator tknMinusEq
+             | tknOperator tknMulEq
+             | tknOperator tknDivEq
+             | tknOperator tknPerEq
+             | tknOperator tknXorEq
+             | tknOperator tknAndEq
+             | tknOperator tknOrEq
+             | tknOperator tknLShift
+             | tknOperator tknRShift
+             | tknOperator tknLShiftEq
+             | tknOperator tknRShiftEq
+             | tknOperator tknCmpEq
+             | tknOperator tknNotEq
+             | tknOperator tknLessEq
+             | tknOperator tknGreaterEq
+             | tknOperator tkn3WayCmp
+             | tknOperator tknAnd
+             | tknOperator tknOr
+             | tknOperator tknInc
+             | tknOperator tknDec
+             | tknOperator ','
+             | tknOperator tknArrow
+             | tknOperator tknArrowStar
+             | tknOperator '(' ')'
+             | tknOperator '[' ']'
+             | tknOperator tknNew
+             | tknOperator tknNew '[' ']'
+             | tknOperator tknDelete
+             | tknOperator tknDelete '[' ']'
+             | tknOperator typeidentifier
+             | tknOperator typeidentifier '*'
+             | identifier tknScopeResOp operfuncname
+             | tknOperator tknStrLit name
+             | operfuncname tknLT templatearglist tknGT
+
+paramlist ::=
+          | param
+          | paramlist ',' param
+
+param ::= varinit
+      | vartype '=' expr
+      | vardecl
+      | vartype
+      | funcptrortype
+      | doccomment param
+      | vartype '[' expr ']'
+      | vartype '[' ']'
+
+
+templatearg ::=
+
+
+templatearg ::= vartype
+
+
+templatearg ::= funcobjstr
+
+
+templatearg ::= expr
+
+
+templatearglist ::= templatearg
+
+
+templatearglist ::= templatearglist ',' templatearg
+
+
+templatearglist ::= templatearglist ',' doccomment templatearg
+
+functype ::= exptype
+         | tknInline
+         | tknVirtual
+         | tknExplicit
+         | tknFriend
+         | tknConstExpr
+
+optfunctype ::=
+            | functype
+
+optfuncattrib ::= tknConst
+              | tknOverride
+              | tknFinal
+              | tknNoExcept
+              | '=' tknNumber
+              | optfuncattrib tknConst
+              | optfuncattrib tknOverride
+              | optfuncattrib tknFinal
+              | optfuncattrib tknNoExcept
+              | optfuncattrib '=' tknNumber
+              | tknMacro
+
+optfuncthrowspec ::=
+                 | functhrowspec
+
+functhrowspec ::= tknThrow '(' identifierlist ')'
+
+identifierlist ::=
+               | identifier
+               | identifierlist ',' identifier
+
+ctordeclstmt ::= ctordecl ';'
+
+ctordefn ::= ctordecl meminitlist block
+
+
+ctordefn ::= name tknScopeResOp name '(' paramlist ')' optfuncthrowspec meminitlist block
+
+
+ctordefn ::= identifier tknScopeResOp name tknScopeResOp name '(' paramlist ')' optfuncthrowspec meminitlist block
+
+
+ctordefn ::= name tknLT templatearglist tknGT tknScopeResOp name '(' paramlist ')' optfuncthrowspec meminitlist block
+         | functype ctordefn
+         | templatespecifier ctordefn
+
+ctordecl ::= identifier '(' paramlist ')'
+         | functype ctordecl
+         | templatespecifier ctordecl
+         | ctordecl '=' tknDelete
+         | ctordecl '=' tknDefault
+         | ctordecl functhrowspec
+         | ctordecl tknNoExcept
+         | apidecor ctordecl
+
+meminitlist ::=
+            | ':' meminit
+            | ':' blob
+            | meminitlist ',' meminit
+
+meminit ::= identifier '(' exprorlist ')'
+        | identifier '(' ')'
+        | identifier '{' exprorlist '}'
+        | identifier '{' '}'
+
+dtordeclstmt ::= dtordecl ';'
+
+dtordefn ::= dtordecl block
+
+
+dtordefn ::= name tknScopeResOp '~' name '(' ')' block
+
+
+dtordefn ::= identifier tknScopeResOp name tknScopeResOp '~' name '(' ')' block
+
+
+dtordefn ::= name tknLT templatearglist tknGT tknScopeResOp '~' name '(' ')' block
+         | templatespecifier dtordefn
+         | functype dtordefn
+
+dtordecl ::= '~' name '(' optvoid ')'
+         | apidecor dtordecl
+         | functype dtordecl
+         | dtordecl optfuncattrib
+         | dtordecl '=' tknNumber
+         | dtordecl '=' tknDelete
+         | dtordecl '=' tknDefault
+         | dtordecl functhrowspec
+
+optvoid ::=
+        | tknVoid
+
+optcomment ::=
+           | doccomment
+
+classdefnstmt ::= classdefn ';'
+
+attribspecifier ::= '[' '[' expr ']' ']'
+
+optattribspecifiers ::=
+                    | attribspecifiers
+
+attribspecifiers ::= attribspecifier
+                 | attribspecifiers attribspecifier
+
+
+classdefn ::= classspecifier optapidecor optattribspecifiers identifier optfinal optinheritlist optcomment '{' optstmtlist '}'
+
+
+classdefn ::= classspecifier optattribspecifiers optinheritlist optcomment '{' optstmtlist '}'
+          | templatespecifier classdefn
+
+
+namespacedefn ::= tknNamespace optidentifier '{' optstmtlist '}'
+
+optfinal ::=
+         | tknFinal
+
+optinheritlist ::=
+               | ':' protlevel optinherittype typeidentifier
+               | optinheritlist ',' protlevel optinherittype typeidentifier
+               | ':' optinherittype protlevel typeidentifier
+               | optinheritlist ',' optinherittype protlevel typeidentifier
+
+protlevel ::=
+          | tknPublic
+          | tknProtected
+          | tknPrivate
+
+optinherittype ::=
+               | tknVirtual
+
+fwddecl ::= classspecifier typeidentifier ';'
+        | classspecifier optapidecor identifier ';'
+        | templatespecifier fwddecl
+        | tknFriend typeidentifier ';'
+        | tknFriend fwddecl
+
+classspecifier ::= tknClass
+               | tknStruct
+               | tknUnion
+
+
+templatespecifier ::= tknTemplate tknLT templateparamlist tknGT
+
+templateparamlist ::=
+                  | templateparam
+                  | templateparamlist ',' templateparam
+
+templateparam ::= tknTypename optname
+              | tknTypename optname '=' vartype
+              | tknClass optname
+              | tknClass optname '=' vartype
+              | vartype name
+              | vartype name '=' expr
+              | functionpointer
+              | functionpointer '=' expr
+              | vartype
+              | vartype '=' expr
+              | tknTypename name ','
+              | tknTypename name '='
+              | tknTypename name tknGT
+              | tknClass name ','
+              | tknClass name tknGT
+
+optapidecor ::=
+            | apidecor
+
+apidecor ::= apidecortokensq
+         | apidecortokensq '(' name ')'
+         | apidecortokensq '(' tknNumber ')'
+         | apidecortokensq '(' strlit ')'
+
+apidecortokensq ::= tknApiDecor
+                | apidecortokensq tknApiDecor
+                | tknApiDecor '(' strlit ')'
+
+changeprotlevel ::= tknPublic ':'
+                | tknProtected ':'
+                | tknPrivate ':'
+
+externcblock ::= tknExternC block
+
+strlit ::= tknStrLit
+       | strlit tknStrLit
+
+expr ::= strlit
+     | tknCharLit
+     | tknNumber
+     | '+' tknNumber
+     | identifier
+     | '{' exprlist '}'
+     | '{' exprlist ',' '}'
+     | '{' exprorlist '}'
+     | '{' exprorlist ',' '}'
+     | '{' '}'
+     | '-' expr
+     | '~' expr
+     | '!' expr
+     | '*' expr
+     | '&' expr
+     | '&' operfuncname
+     | tknInc expr
+     | expr tknInc
+     | tknDec expr
+     | expr tknDec
+     | expr '+' expr
+     | expr '-' expr
+     | expr '*' expr
+     | expr '/' expr
+     | expr '%' expr
+     | expr '&' expr
+     | expr '|' expr
+     | expr '^' expr
+     | expr '=' expr
+     | expr tknLT expr
+     | expr tknGT expr
+     | expr '?' expr ':' expr
+     | expr tknPlusEq expr
+     | expr tknMinusEq expr
+     | expr tknMulEq expr
+     | expr tknDivEq expr
+     | expr tknPerEq expr
+     | expr tknXorEq expr
+     | expr tknAndEq expr
+     | expr tknOrEq expr
+     | expr tknLShift expr
+     | expr rshift expr
+     | expr tknLShiftEq expr
+     | expr tknRShiftEq expr
+     | expr tknCmpEq expr
+     | expr tknNotEq expr
+     | expr tknLessEq expr
+     | expr tknGreaterEq expr
+     | expr tkn3WayCmp expr
+     | expr tknAnd expr
+     | expr tknOr expr
+     | expr '.' funcname
+     | expr '.' '*' funcname
+     | expr tknArrow funcname
+     | expr tknArrowStar funcname
+     | expr '.' '~' funcname
+     | expr tknArrow '~' funcname
+     | expr '[' expr ']'
+     | expr '[' ']'
+     | expr '(' funcargs ')'
+     | funcname '(' funcargs ')'
+     | expr tknArrow '~' identifier '(' ')'
+     | identifier '{' funcargs '}'
+     | '(' vartype ')' expr
+     | tknConstCast tknLT vartype tknGT '(' expr ')'
+     | tknStaticCast tknLT vartype tknGT '(' expr ')'
+     | tknDynamicCast tknLT vartype tknGT '(' expr ')'
+     | tknReinterpretCast tknLT vartype tknGT '(' expr ')'
+     | '(' exprorlist ')'
+     | tknNew typeidentifier opttypemodifier
+     | tknNew expr
+     | tknNew '(' expr ')' expr
+     | tknScopeResOp tknNew '(' expr ')' expr
+     | tknDelete expr
+     | tknDelete '[' ']' expr
+     | tknReturn exprorlist
+     | tknReturn
+     | tknThrow expr
+     | tknThrow
+     | tknSizeOf '(' vartype ')'
+     | tknSizeOf '(' expr ')'
+     | tknSizeOf tknEllipsis '(' vartype ')'
+     | tknSizeOf tknEllipsis '(' expr ')'
+     | expr tknEllipsis
+     | lambda
+     | tknGoto name
+     | tknNumber name
+     | '[' expr expr ']'
+     | '[' expr objcarglist ']'
+
+objcarg ::= name ':' expr
+
+objcarglist ::= objcarg
+            | objcarglist objcarg
+
+exprlist ::= expr ',' expr
+         | exprlist ',' expr
+         | doccommentstr exprlist
+
+exprorlist ::= expr
+           | exprlist
+           | doccommentstr exprorlist
+
+funcargs ::=
+         | exprorlist
+
+captureallbyref ::= '&'
+
+captureallbyval ::= '='
+
+lambdacapture ::= funcargs
+              | captureallbyref
+              | captureallbyval
+
+exprstmt ::= expr ';'
+
+// Tokens
+
+tknScopeResOp ::= "::"
+tknConst ::= "const"
+tknConstExpr ::= "constexpr"
+tknStatic ::= "static"
+tknInline ::= "inline"
+tknVirtual ::= "virtual"
+tknOverride ::= "override"
+tknFinal ::= "final"
+tknNoExcept ::= "noexcept"
+tknExtern ::= "extern"
+tknExplicit ::= "explicit"
+tknFriend ::= "friend"
+tknExternC ::= "extern" '"C"'
+tknVolatile ::= "volatile"
+tknMutable ::= "mutable"
+tknNew ::= "new"
+tknDelete ::= "delete"
+tknDefault ::= "default"
+tknReturn ::= "return"
+tknIf ::= "if"
+tknElse ::= "else"
+tknFor ::= "for"
+tknDo ::= "do"
+tknWhile ::= "while"
+tknSwitch ::= "switch"
+tknCase ::= "case"
+tknConstCast ::= "const_cast"
+tknStaticCast ::= "static_cast"
+tknDynamicCast ::= "dynamic_cast"
+tknReinterpretCast ::= "reinterpret_cast"
+tknTry ::= "try"
+tknCatch ::= "catch"
+tknThrow ::= "throw"
+tknSizeOf ::= "sizeof"
+tknOperator ::= "operator"
+tknVoid ::= "void"
+tknPlusEq ::= "+="
+tknMinusEq ::= "-="
+tknMulEq ::= "*="
+tknDivEq ::= "/="
+tknPerEq ::= "%="
+tknXorEq ::= "^="
+tknAndEq ::= "&="
+tknOrEq ::= "|="
+tknLShift ::= "<<"
+tknLShiftEq ::= "<<="
+tknLT ::= "<"
+tknRShift ::= ">>"
+tknGT ::= ">"
+tknRShiftEq ::= ">>="
+tknCmpEq ::= "=="
+tknNotEq ::= "!="
+tknLessEq ::= "<="
+tknGreaterEq ::= ">="
+tkn3WayCmp ::= "<=>"
+tknAnd ::= "&&"
+tknOr ::= "||"
+tknInc ::= "++"
+tknDec ::= "--"
+tknArrow ::= "->"
+tknArrowStar ::= "->*"
+
+tknAsm ::= "asm"
+tknGoto ::= "goto"
+tknNumSignSpec ::= "signed" | "unsigned"
+tknInteger ::= "long" "long" "int" | "long" "long" | "long" "int" | "long" | "int" | "short" "int"| "short"
+tknInteger ::= "__int8" | "__int16" | "__int32" | "__int64" | "__int128"
+tknChar ::= "char"
+tknDouble ::= "long" "double" | "double"
+tknFloat ::= "long" "float" | "float"
+tknAuto ::= "auto"
+tknTypedef ::= "typedef"
+tknUsing ::= using
+tknClass ::= "class"
+tknNamespace ::= "namespace"
+tknStruct ::= "struct"
+tknUnion ::= "union"
+tknEnum ::= "enum" ("class"? ID? (":"* ID)? "{")?
+tknPublic ::= "public" ":"?
+tknProtected ::= "protected"":"?
+tknPrivate ::= "private" ":"?
+tknTemplate ::= "template"
+tknTypename ::= "typename"
+tknDecltype ::= "decltype"
+
+tknPreProHash ::= '#'
+tknDefine ::= "define"
+tknUndef ::= "undef"
+tknInclude ::= "include"
+tknHashError ::= "error"
+tknPragma ::= "pragma"
+tknImport ::= "import"
+tknElif ::= "elif"
+tknIfdef ::= "ifdef"
+tknIfndef ::= "ifndef"
+tknEndif ::= "endif"
+tknHashWarning ::= "warning"
