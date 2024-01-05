@@ -29,3 +29,11 @@ The [rose-compiler](https://github.com/rose-compiler/rose/) experimental-c++-par
 The [cppparser](https://github.com/satya-das/cppparser) satya-das-cppparser grammar.
 
 - [satya-das-cppparser](https://mingodad.github.io/cpp-grammars/satya-das-cppparser.ebnf.xhtml)
+
+The [cppfront](https://github.com/hsutter/cppfront/)  grammar.
+
+- [cppfront](https://mingodad.github.io/cpp-grammars/cppfront.ebnf.xhtml)
+
+The [carbon-lang](https://github.com/carbon-language/carbon-lang)  grammar.
+
+- [carbon-lang](https://mingodad.github.io/cpp-grammars/carbon-lang.ebnf.xhtml)

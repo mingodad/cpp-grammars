@@ -1,0 +1,343 @@
+//Adapted from: https://github.com/hsutter/cppfront/blob/389ae509b9528447f404c42566d3163fd37bb3f7/source/parse.h
+
+//  Copyright (c) Herb Sutter
+//  SPDX-License-Identifier: CC-BY-NC-ND-4.0
+
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+translation_unit ::=
+	declaration-seq?
+
+declaration-seq ::=
+	declaration
+	| declaration-seq declaration
+
+declaration ::=
+	access-specifier? identifier "..."? unnamed-declaration
+	|access-specifier? identifier alias
+
+access-specifier ::=
+     "public"
+     | "protected"
+     | "private"
+
+alias ::=
+	':' template-parameter-declaration-list? "type" requires-clause? "==" type-id ';'
+	| ':' "namespace" "==" id-expression ';'
+	| ':' template-parameter-declaration-list? type-id? requires-clause? "==" expression ';'
+//TODO	| ':' function-type "==" expression ';'
+        // See commit 63efa6ed21c4d4f4f136a7a73e9f6b2c110c81d7 comment
+        // for why I don't see a need to enable this yet
+
+prefix-operator ::=
+	'!' | '-' | '+'
+	//| parameter-direction
+
+postfix-operator ::=
+	"++" | "--" | '*' | '&' | '~' | '$' | "..."
+
+assignment-operator ::=
+	'=' | "*=" | "/=" | "%=" | "+=" | "-=" | ">>=" | "<<=" | "&=" | "^=" | "|="
+
+primary-expression ::=
+	inspect-expression
+	| id-expression
+	| literal
+	| '(' expression-list ')'
+	| '{' expression-list '}'
+	| unnamed-declaration
+
+postfix-expression ::=
+	primary-expression
+	| postfix-expression postfix-operator     //[Note: without whitespace before the operator]
+	| postfix-expression '[' expression-list? ']'
+	| postfix-expression '(' expression-list? ')'
+	| postfix-expression '.' id-expression
+
+prefix-expression ::=
+	postfix-expression
+	| prefix-operator prefix-expression
+//TODO     | await-expression
+//TODO     | 'sizeof' '(' type-id ')'
+//TODO     | 'sizeof' '...' ( identifier ')'
+//TODO     | 'alignof' '(' type-id ')'
+//TODO     | throws-expression
+
+multiplicative-expression ::=
+	is-as-expression
+	| multiplicative-expression '*' is-as-expression
+	| multiplicative-expression '/' is-as-expression
+	| multiplicative-expression '%' is-as-expression
+
+additive-expression ::=
+	multiplicative-expression
+	| additive-expression '+' multiplicative-expression
+	| additive-expression '-' multiplicative-expression
+
+shift-expression ::=
+	additive-expression
+	| shift-expression '<<' additive-expression
+	| shift-expression '>>' additive-expression
+
+compare-expression ::=
+	shift-expression
+	| compare-expression '<=>' shift-expression
+
+relational-expression ::=
+	compare-expression
+	| relational-expression '<'  compare-expression
+	| relational-expression '>'  compare-expression
+	| relational-expression '<=' compare-expression
+	| relational-expression '>=' compare-expression
+
+equality-expression ::=
+	relational-expression
+	| equality-expression '==' relational-expression
+	| equality-expression '!=' relational-expression
+
+bit-and-expression ::=
+	equality-expression
+	| bit-and-expression '&' equality-expression
+
+bit-xor-expression ::=
+	bit-and-expression
+	| bit-xor-expression '^' bit-and-expression
+
+bit-or-expression ::=
+	bit-xor-expression
+	| bit-or-expression '|' bit-xor-expression
+
+logical-and-expression ::=
+	bit-or-expression
+	| logical-and-expression '&&' bit-or-expression
+
+//  constant-expression:    // don't need intermediate production, just use:
+//  conditional-expression: // don't need intermediate production, just use:
+logical-or-expression ::=
+	logical-and-expression
+	| logical-or-expression '||' logical-and-expression
+
+assignment-expression ::=
+	logical-or-expression
+	| assignment-expression assignment-operator logical-or-expression
+
+expression ::=               // eliminated 'condition:' - just use 'expression:'
+	assignment-expression
+//TODO    | try expression
+
+expression-list ::=
+	parameter-direction? expression
+	| expression-list ',' parameter-direction? expression
+
+type-id ::=
+	type-qualifier-seq? qualified-id
+	| type-qualifier-seq? unqualified-id
+
+type-qualifier-seq ::=
+	type-qualifier
+	| type-qualifier-seq type-qualifier
+
+type-qualifier ::=
+	'const'
+	| '*'
+
+is-as-expression ::=
+	prefix-expression
+	| is-as-expression is-type-constraint
+	| is-as-expression is-value-constraint
+	| is-as-expression as-type-cast
+//TODO     | type-id is-type-constraint
+
+is-type-constraint ::=
+	'is' type-id
+
+is-value-constraint ::=
+	'is' expression
+
+as-type-cast ::=
+	'as' type-id
+
+unqualified-id ::=
+	identifier
+	| keyword
+	| template-id
+//TODO     | operator-function-id
+	// ...
+
+template-id ::=
+	identifier '<' template-argument-list? '>'
+
+template-argument-list ::=
+	template-argument-list ',' template-argument
+
+template-argument ::=
+	// note: < > << >> are not allowed in expressions until new ( is opened
+	'const' type-id
+	| expression
+	| type-id
+
+qualified-id ::=
+	nested-name-specifier unqualified-id
+	| member-name-specifier unqualified-id
+
+nested-name-specifier ::=
+	'::'
+	| unqualified-id '::'
+
+member-name-specifier ::=
+	unqualified-id '.'
+
+id-expression ::=
+	qualified-id
+	| unqualified-id
+
+literal ::=
+	integer-literal ud-suffix?
+	| character-literal ud-suffix?
+	| floating-point-literal ud-suffix?
+	| string-literal ud-suffix?
+	| boolean-literal ud-suffix?
+	| pointer-literal ud-suffix?
+	| user-defined-literal ud-suffix?
+
+expression-statement ::=
+	expression ';'
+	| expression
+
+selection-statement ::=
+	'if' 'constexpr'? logical-or-expression compound-statement
+	| 'if' 'constexpr'? logical-or-expression compound-statement 'else' compound-statement
+
+return-statement ::=
+	return expression? ';'
+
+iteration-statement ::=
+	label? 'while' logical-or-expression next-clause? compound-statement
+	| label? 'do' compound-statement next-clause? 'while' logical-or-expression ';'
+	| label? 'for' expression next-clause? 'do' unnamed-declaration
+
+label ::=
+	identifier ':'
+
+next-clause ::=
+	'next' assignment-expression
+
+alternative ::=
+	alt-name? is-type-constraint '=' statement
+	| alt-name? is-value-constraint '=' statement
+	| alt-name? as-type-cast '=' statement
+
+//TODO alt-name ::=
+//	unqualified-id ':'
+
+inspect-expression ::=
+	'inspect' 'constexpr'? expression '{' alternative-seq? '}'
+	| 'inspect' 'constexpr'? expression '->' type-id '{' alternative-seq? '}'
+
+alternative-seq ::=
+	alternative
+	| alternative-seq alternative
+
+jump-statement ::=
+	'break' identifier? ';'
+	| 'continue' identifier? ';'
+
+using-statement ::=
+	'using' id-expression ';'
+	| 'using' 'namespace' id-expression ';'
+
+statement ::=
+	selection-statement
+	| using-statement
+	| inspect-expression
+	| return-statement
+	| jump-statement
+	| iteration-statement
+	| compound-statement
+	| contract-statement
+	| declaration
+	| expression-statement
+
+contract-statement ::=
+	contract ';'
+
+//TODO     try-block
+
+compound-statement ::=
+	'{' statement-seq? '}'
+
+statement-seq ::=
+	statement
+	| statement-seq statement
+
+parameter-declaration ::=
+	this-specifier? parameter-direction? declaration
+
+parameter-direction ::=
+	'in' | 'copy' | 'inout' | 'out' | 'move' | 'forward'
+
+this-specifier ::=
+	'implicit'
+	| 'virtual'
+	| 'override'
+	| 'final'
+
+parameter-declaration-list ::=
+	'(' parameter-declaration-seq? ')'
+
+parameter-declaration-seq ::=
+	parameter-declaration
+	| parameter-declaration-seq ',' parameter-declaration
+
+contract ::=
+	contract-kind contract-group? ':' '(' logical-or-expression ')'
+	| contract-kind contract-group? ':' '(' logical-or-expression ',' expression ')'
+
+contract-group ::=
+	'<' id-expression contract-flags?'>'
+
+contract-flags ::=
+	',' id-expression contract-flags?
+
+contract-kind ::=
+	'pre' | 'post' | 'assert'
+
+function-type ::=
+	parameter-declaration-list throws-specifier? return-list? contract-seq?
+
+throws-specifier ::=
+	'throws'
+
+return-list ::=
+	expression-statement
+	| '->' parameter-direction? type-id
+	| '->' parameter-declaration-list
+
+contract-seq ::=
+	contract
+	| contract-seq contract
+
+unnamed-declaration ::=
+	':' meta-functions-list? template-parameter-declaration-list? function-type requires-clause? '=' statement
+	| ':' meta-functions-list? template-parameter-declaration-list? function-type statement
+	| ':' meta-functions-list? template-parameter-declaration-list? type-id? requires-clause? '=' statement
+	| ':' meta-functions-list? template-parameter-declaration-list? type-id
+	| ':' meta-functions-list? template-parameter-declaration-list? 'final'? 'type' requires-clause? '=' statement
+	| ':' 'namespace' '=' statement
+
+meta-functions-list ::=
+	'@' id-expression
+	| meta-functions-list '@' id-expression
+
+requires-clause ::=
+	// note: for aliases, == is not allowed in expressions until new ( is opened
+	'requires' logical-or-expression
+
+template-parameter-declaration-list ::=
+	'<' parameter-declaration-seq '>'
