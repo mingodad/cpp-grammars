@@ -8,9 +8,15 @@ Here are the grammars extracted from [https://github.com/cplusplus/draft/](https
 - [C++20](https://mingodad.github.io/cpp-grammars/c++20.ebnf.xhtml)
 - [C++23-draft](https://mingodad.github.io/cpp-grammars/c++23.ebnf.xhtml)
 
+## Other related grammars
+
 The g++-3.3.6 grammar (the last using yacc/bison).
 
 - [g++3.3.6](https://mingodad.github.io/cpp-grammars/g++-3.3.6.ebnf.xhtml)
+
+The [Elsa C++](https://github.com/dsw/oink-stack/blob/master/elsa/cc.gr) grammar.
+
+- [elsa-c++](https://mingodad.github.io/cpp-grammars/elsa-cc.gr.ebnf.xhtml)
 
 The open-watcom-v2 grammar.
 
