@@ -14,9 +14,10 @@ The g++-3.3.6 grammar (the last using yacc/bison).
 
 - [g++3.3.6](https://mingodad.github.io/cpp-grammars/g++-3.3.6.ebnf.xhtml)
 
-The [Elsa C++](https://github.com/dsw/oink-stack/blob/master/elsa/cc.gr) grammar.
+The [Elsa C++](https://github.com/smcpeak/elsa) grammar.
 
 - [elsa-c++](https://mingodad.github.io/cpp-grammars/elsa-cc.gr.ebnf.xhtml)
+- [elsa-kandr-gnu-c++](https://mingodad.github.io/cpp-grammars/elsa.cc.kandr.gnu.ebnf.xhtml)
 
 The open-watcom-v2 grammar.
 
@@ -43,3 +44,5 @@ The [cppfront](https://github.com/hsutter/cppfront/)  grammar.
 The [carbon-lang](https://github.com/carbon-language/carbon-lang)  grammar.
 
 - [carbon-lang](https://mingodad.github.io/cpp-grammars/carbon-lang.ebnf.xhtml)
+
+There is also a had written [`C++` parser here](https://github.com/robertoraggi/cplusplus).
