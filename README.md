@@ -51,4 +51,4 @@ The [carbon-lang](https://github.com/carbon-language/carbon-lang)  grammar.
 
 - [carbon-lang](https://mingodad.github.io/cpp-grammars/carbon-lang.ebnf.xhtml)
 
-There is also a had written [`C++` parser here](https://github.com/robertoraggi/cplusplus).
+There is also a hand written [`C++` parser here](https://github.com/robertoraggi/cplusplus).
