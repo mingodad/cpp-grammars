@@ -9,6 +9,9 @@ Here are the grammars extracted from [https://github.com/cplusplus/draft/](https
 - [C++23-draft](https://mingodad.github.io/cpp-grammars/c++23.ebnf.xhtml)
 
 ## C
+- [C99](https://mingodad.github.io/cpp-grammars/c99.ebnf.xhtml)
+- [C11](https://mingodad.github.io/cpp-grammars/c11.ebnf.xhtml)
+- [C17](https://mingodad.github.io/cpp-grammars/c17.ebnf.xhtml)
 - [C23](https://mingodad.github.io/cpp-grammars/c23-n3220.ebnf.xhtml)
 
 ## Other related grammars
