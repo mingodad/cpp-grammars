@@ -8,6 +8,9 @@ Here are the grammars extracted from [https://github.com/cplusplus/draft/](https
 - [C++20](https://mingodad.github.io/cpp-grammars/c++20.ebnf.xhtml)
 - [C++23-draft](https://mingodad.github.io/cpp-grammars/c++23.ebnf.xhtml)
 
+## C
+- [C23](https://mingodad.github.io/cpp-grammars/c23-n3220.ebnf.xhtml)
+
 ## Other related grammars
 
 The g++-3.3.6 grammar (the last using yacc/bison).
