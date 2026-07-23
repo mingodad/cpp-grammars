@@ -51,4 +51,8 @@ The [carbon-lang](https://github.com/carbon-language/carbon-lang)  grammar.
 
 - [carbon-lang](https://mingodad.github.io/cpp-grammars/carbon-lang.ebnf.xhtml)
 
+The [madc](https://github.com/derekbsnider/madc) ("My Advanced Dialect of C") grammar.
+
+- [madc](https://mingodad.github.io/cpp-grammars/madc.ebnf.xhtml)
+
 There is also a hand written [`C++` parser here](https://github.com/robertoraggi/cplusplus).
